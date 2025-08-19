@@ -1,0 +1,10 @@
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="9.827618999999999">
+<testsuite name="video-call-interview.test.js" timestamp="2025-08-16T10:24:34.942Z" hostname="chromium" tests="1" failures="0" skipped="0" time="1.66" errors="0">
+<testcase name="Video Call Interview Tests › should start with greeting and tell me about yourself" classname="video-call-interview.test.js" time="1.66">
+<system-out>
+<![CDATA[Skipping test - user not authenticated
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>
