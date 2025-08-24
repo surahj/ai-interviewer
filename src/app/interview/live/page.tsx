@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/providers';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Mic, 
+import { useAuth } from "@/components/providers";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Mic,
   MicOff,
   Video,
   VideoOff,
@@ -25,13 +31,23 @@ import {
   MessageCircle,
   Send,
   Wifi,
-  WifiOff
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
-import { RealtimeConversationManager, checkRealtimeSupport } from '@/lib/realtime-conversation';
-import { SpeechRecognitionManager, SpeechSynthesisManager, AudioRecordingManager, checkSpeechSupport, requestMicrophonePermission, interviewSpeechUtils } from '@/lib/speech';
-import toast from 'react-hot-toast';
+  WifiOff,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import {
+  RealtimeConversationManager,
+  checkRealtimeSupport,
+} from "@/lib/realtime-conversation";
+import {
+  SpeechRecognitionManager,
+  SpeechSynthesisManager,
+  AudioRecordingManager,
+  checkSpeechSupport,
+  requestMicrophonePermission,
+  interviewSpeechUtils,
+} from "@/lib/speech";
+import toast from "react-hot-toast";
 
 interface InterviewState {
   isConnected: boolean;
@@ -50,7 +66,7 @@ interface InterviewState {
   userTranscript: string;
   aiResponse: string;
   conversationHistory: Array<{
-    role: 'user' | 'assistant';
+    role: "user" | "assistant";
     content: string;
     timestamp: Date;
   }>;
@@ -71,21 +87,21 @@ export default function LiveInterviewPage() {
     isRecording: false,
     isMuted: false,
     isVideoOn: true,
-    currentQuestion: '',
+    currentQuestion: "",
     questionNumber: 1,
     totalQuestions: 12,
     timeRemaining: 900, // 15 minutes in seconds
     score: 0,
-    feedback: '',
+    feedback: "",
     isListening: false,
     isSpeaking: false,
     isThinking: false,
-    userTranscript: '',
-    aiResponse: '',
+    userTranscript: "",
+    aiResponse: "",
     conversationHistory: [],
-    connectionState: 'disconnected',
+    connectionState: "disconnected",
     realtimeConnected: false,
-    usingFallback: false
+    usingFallback: false,
   });
 
   // Session management
@@ -94,7 +110,7 @@ export default function LiveInterviewPage() {
   const [realtimeSession, setRealtimeSession] = useState<any>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
-  
+
   // Refs to prevent duplicate API calls
   const initializationRef = useRef(false);
   const sessionCreationRef = useRef(false);
@@ -107,16 +123,16 @@ export default function LiveInterviewPage() {
 
   // Realtime manager
   const realtimeManagerRef = useRef<RealtimeConversationManager | null>(null);
-  
+
   // Speech managers (for fallback)
   const speechRecognitionRef = useRef<SpeechRecognitionManager | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesisManager | null>(null);
   const audioRecordingRef = useRef<AudioRecordingManager | null>(null);
   const listeningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Ref to track current state for callbacks
   const currentStateRef = useRef<InterviewState | null>(null);
-  
+
   // Update ref whenever state changes
   useEffect(() => {
     currentStateRef.current = interviewState;
@@ -125,37 +141,33 @@ export default function LiveInterviewPage() {
   useEffect(() => {
     if (!loading && !user) {
       setIsRedirecting(true);
-      router.push('/login?redirectTo=/interview/live');
+      router.push("/login?redirectTo=/interview/live");
     }
   }, [user, loading, router]);
 
   useEffect(() => {
     // Prevent multiple initializations
     if (isInitialized || initializationRef.current) return;
-    
+
     initializationRef.current = true;
 
     // Initialize everything in sequence
     const initializeEverything = async () => {
       try {
-        console.log('Starting interview initialization...');
-        
         // Initialize interview session first
         await initializeInterviewSession();
-        
+
         // Try to initialize realtime connection, fallback to speech if needed
         await initializeConnection();
-        
+
         // Initialize media devices
         await initializeMediaDevices();
-        
+
         // Mark as initialized
         setIsInitialized(true);
-        
-        console.log('Interview initialization completed');
       } catch (error) {
-        console.error('Error initializing interview:', error);
-        toast.error('Failed to initialize interview session');
+        console.error("Error initializing interview:", error);
+        toast.error("Failed to initialize interview session");
         // Reset the ref on error so user can retry
         initializationRef.current = false;
       }
@@ -169,9 +181,9 @@ export default function LiveInterviewPage() {
     if (!isInitialized) return;
 
     const timer = setInterval(() => {
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
-        timeRemaining: Math.max(0, prev.timeRemaining - 1)
+        timeRemaining: Math.max(0, prev.timeRemaining - 1),
       }));
     }, 1000);
 
@@ -187,7 +199,7 @@ export default function LiveInterviewPage() {
       if (realtimeManagerRef.current) {
         realtimeManagerRef.current.disconnect();
       }
-      
+
       // Cleanup speech systems
       if (speechRecognitionRef.current) {
         speechRecognitionRef.current.stopListening();
@@ -199,7 +211,7 @@ export default function LiveInterviewPage() {
       if (listeningTimeoutRef.current) {
         clearTimeout(listeningTimeoutRef.current);
       }
-      
+
       // Reset refs
       initializationRef.current = false;
       sessionCreationRef.current = false;
@@ -210,30 +222,29 @@ export default function LiveInterviewPage() {
   const initializeInterviewSession = async () => {
     // Prevent duplicate session creation
     if (sessionCreationRef.current) {
-      console.log('Session creation already in progress, skipping...');
       return;
     }
-    
+
     sessionCreationRef.current = true;
-    
+
     try {
       // Get interview configuration from sessionStorage
-      const storedConfig = sessionStorage.getItem('interviewConfig');
-      const interviewConfig = storedConfig ? JSON.parse(storedConfig) : {
-        role: 'software-engineer',
-        level: 'mid-level',
-        type: 'mixed',
-        duration: '15',
-        customRequirements: ''
-      };
-
-      console.log('Creating interview session with config:', interviewConfig);
+      const storedConfig = sessionStorage.getItem("interviewConfig");
+      const interviewConfig = storedConfig
+        ? JSON.parse(storedConfig)
+        : {
+            role: "software-engineer",
+            level: "mid-level",
+            type: "mixed",
+            duration: "15",
+            customRequirements: "",
+          };
 
       // Create interview session
-      const response = await fetch('/api/interview/session', {
-        method: 'POST',
+      const response = await fetch("/api/interview/session", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(interviewConfig),
       });
@@ -243,23 +254,21 @@ export default function LiveInterviewPage() {
         setSessionId(sessionData.sessionId);
         setSessionConfig(sessionData.interviewConfig);
         setRealtimeSession(sessionData.realtimeSession);
-        setInterviewState(prev => ({
+        setInterviewState((prev) => ({
           ...prev,
           totalQuestions: sessionData.interviewConfig.totalQuestions,
-          timeRemaining: sessionData.interviewConfig.duration * 60
+          timeRemaining: sessionData.interviewConfig.duration * 60,
         }));
-        console.log('Interview session created:', sessionData.sessionId);
-        console.log('Realtime session available:', !!sessionData.realtimeSession);
         return sessionData;
       } else {
         const errorText = await response.text();
-        console.error('Failed to create interview session:', errorText);
-        toast.error('Failed to initialize interview session');
-        throw new Error('Failed to create interview session');
+        console.error("Failed to create interview session:", errorText);
+        toast.error("Failed to initialize interview session");
+        throw new Error("Failed to create interview session");
       }
     } catch (error) {
-      console.error('Error creating interview session:', error);
-      toast.error('Failed to create interview session');
+      console.error("Error creating interview session:", error);
+      toast.error("Failed to create interview session");
       // Reset the ref on error so user can retry
       sessionCreationRef.current = false;
       throw error;
@@ -269,90 +278,87 @@ export default function LiveInterviewPage() {
   const initializeConnection = async () => {
     // Check if realtime session is available
     if (realtimeSession && checkRealtimeSupport()) {
-      console.log('Initializing realtime connection...');
       try {
         await initializeRealtimeConnection();
       } catch (error) {
-        console.error('Realtime connection failed, falling back to speech:', error);
+        console.error(
+          "Realtime connection failed, falling back to speech:",
+          error
+        );
         await initializeSpeechFallback();
       }
     } else {
-      console.log('Realtime not available, using speech fallback...');
       await initializeSpeechFallback();
     }
   };
 
   const initializeRealtimeConnection = async () => {
     try {
-      console.log('Initializing realtime connection...');
-      
       if (!realtimeSession) {
-        throw new Error('No realtime session available');
+        throw new Error("No realtime session available");
       }
-      
+
       // Create realtime manager
       realtimeManagerRef.current = new RealtimeConversationManager({
         session: realtimeSession,
         onAudioReceived: (audioBlob: Blob) => {
-          console.log('Audio received from AI');
+          // Audio received from AI
         },
         onTranscriptReceived: (transcript: string, isFinal: boolean) => {
-          console.log('Transcript received:', transcript, isFinal);
           if (isFinal && transcript.trim()) {
-            setInterviewState(prev => ({
+            setInterviewState((prev) => ({
               ...prev,
               conversationHistory: [
                 ...prev.conversationHistory,
-                { role: 'assistant', content: transcript, timestamp: new Date() }
+                {
+                  role: "assistant",
+                  content: transcript,
+                  timestamp: new Date(),
+                },
               ],
               aiResponse: transcript,
-              isSpeaking: false
+              isSpeaking: false,
             }));
           }
         },
         onError: (error: string) => {
-          console.error('Realtime error:', error);
-          toast.error(`Connection error: ${error}`);
-          setInterviewState(prev => ({
+          console.error("Realtime error:", error);
+          // toast.error(`Connection error: ${error}`);
+          setInterviewState((prev) => ({
             ...prev,
             realtimeConnected: false,
-            connectionState: 'failed'
+            connectionState: "failed",
           }));
         },
         onConnectionStateChange: (state: string) => {
-          console.log('Connection state changed:', state);
-          setInterviewState(prev => ({
+          setInterviewState((prev) => ({
             ...prev,
             connectionState: state,
-            realtimeConnected: state === 'connected'
+            realtimeConnected: state === "connected",
           }));
-        }
+        },
       });
 
       // Connect to OpenAI Realtime
       if (realtimeManagerRef.current) {
         await realtimeManagerRef.current.connect();
       }
-      
-      console.log('Realtime connection established');
-      setInterviewState(prev => ({
+
+      setInterviewState((prev) => ({
         ...prev,
         realtimeConnected: true,
-        connectionState: 'connected',
-        usingFallback: false
+        connectionState: "connected",
+        usingFallback: false,
       }));
-
     } catch (error) {
-      console.error('Error initializing realtime connection:', error);
-      toast.error('Failed to establish realtime connection, using fallback');
+      console.error("Error initializing realtime connection:", error);
+      toast.error("Failed to establish realtime connection, using fallback");
       await initializeSpeechFallback();
     }
   };
 
   const initializeSpeechFallback = async () => {
     try {
-      console.log('Initializing speech fallback...');
-      
       // Check speech support
       const speechSupport = checkSpeechSupport();
       if (!speechSupport.recognition || !speechSupport.synthesis) {
@@ -363,17 +369,17 @@ export default function LiveInterviewPage() {
       // Request microphone permission
       const hasPermission = await requestMicrophonePermission();
       if (!hasPermission) {
-        toast.error('Microphone permission is required for voice interaction');
+        toast.error("Microphone permission is required for voice interaction");
         return;
       }
 
       // Initialize speech recognition
       speechRecognitionRef.current = new SpeechRecognitionManager();
       speechRecognitionRef.current.onResult((result) => {
-        setInterviewState(prev => ({
+        setInterviewState((prev) => ({
           ...prev,
           userTranscript: result.transcript,
-          isListening: !result.isFinal
+          isListening: !result.isFinal,
         }));
 
         // Clear any existing timeout
@@ -385,9 +391,8 @@ export default function LiveInterviewPage() {
         if (result.transcript.trim()) {
           listeningTimeoutRef.current = setTimeout(() => {
             if (speechRecognitionRef.current && interviewState.isListening) {
-              console.log('Silence timeout - processing response');
               speechRecognitionRef.current.stopListening();
-              setInterviewState(prev => ({ ...prev, isListening: false }));
+              setInterviewState((prev) => ({ ...prev, isListening: false }));
               handleUserResponse(result.transcript);
             }
           }, 3000);
@@ -403,30 +408,28 @@ export default function LiveInterviewPage() {
       });
 
       speechRecognitionRef.current.onError((error) => {
-        console.error('Speech recognition error:', error);
-        toast.error('Speech recognition error: ' + error.error);
+        console.error("Speech recognition error:", error);
+        toast.error("Speech recognition error: " + error.error);
       });
 
       // Initialize speech synthesis
       speechSynthesisRef.current = new SpeechSynthesisManager();
       speechSynthesisRef.current.onStart(() => {
-        setInterviewState(prev => ({ ...prev, isSpeaking: true }));
+        setInterviewState((prev) => ({ ...prev, isSpeaking: true }));
         // Stop listening when AI starts speaking
         if (speechRecognitionRef.current && interviewState.isListening) {
           speechRecognitionRef.current.stopListening();
-          setInterviewState(prev => ({ ...prev, isListening: false }));
+          setInterviewState((prev) => ({ ...prev, isListening: false }));
         }
       });
-      
+
       speechSynthesisRef.current.onEnd(() => {
-        setInterviewState(prev => ({ ...prev, isSpeaking: false }));
-        console.log('=== AI FINISHED SPEAKING ===');
-        console.log('Waiting for user to start speaking...');
+        setInterviewState((prev) => ({ ...prev, isSpeaking: false }));
         // Resume listening after AI finishes speaking
         if (speechRecognitionRef.current && !interviewState.isListening) {
           setTimeout(() => {
             speechRecognitionRef.current?.startListening();
-            setInterviewState(prev => ({ ...prev, isListening: true }));
+            setInterviewState((prev) => ({ ...prev, isListening: true }));
           }, 1000); // Wait 1 second before resuming
         }
       });
@@ -434,15 +437,14 @@ export default function LiveInterviewPage() {
       // Generate and speak first question
       await generateAndSpeakFirstQuestion();
 
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
         usingFallback: true,
-        connectionState: 'connected'
+        connectionState: "connected",
       }));
-
     } catch (error) {
-      console.error('Error initializing speech fallback:', error);
-      toast.error('Failed to initialize voice features');
+      console.error("Error initializing speech fallback:", error);
+      toast.error("Failed to initialize voice features");
     }
   };
 
@@ -451,84 +453,82 @@ export default function LiveInterviewPage() {
 
     // Prevent duplicate question generation
     if (firstQuestionGeneratedRef.current) {
-      console.log('First question already generated, skipping...');
       return;
     }
-    
+
     firstQuestionGeneratedRef.current = true;
 
     try {
       // Use session config if available, otherwise fallback
       const config = sessionConfig || {
-        role: 'software-engineer',
-        level: 'mid-level',
-        type: 'mixed',
-        focusArea: 'general',
-        customRequirements: ''
+        role: "software-engineer",
+        level: "mid-level",
+        type: "mixed",
+        focusArea: "general",
+        customRequirements: "",
       };
 
-      console.log('Generating first question with config:', config);
-
       // Call API to generate first question
-      const response = await fetch('/api/interview/generate-question', {
-        method: 'POST',
+      const response = await fetch("/api/interview/generate-question", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           context: config,
-          isFirstQuestion: true
+          isFirstQuestion: true,
         }),
       });
 
-      console.log('API Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`Failed to generate question: ${response.status} ${errorText}`);
+        console.error("API Error:", errorText);
+        throw new Error(
+          `Failed to generate question: ${response.status} ${errorText}`
+        );
       }
 
       const questionResponse = await response.json();
-      console.log('Generated question:', questionResponse);
-      
-      setInterviewState(prev => ({
+
+      setInterviewState((prev) => ({
         ...prev,
         currentQuestion: questionResponse.question,
-        aiResponse: questionResponse.question
+        aiResponse: questionResponse.question,
       }));
 
       // Format and speak the question
-      const formattedQuestion = interviewSpeechUtils.formatQuestionForSpeech(questionResponse.question);
-      const speechOptions = interviewSpeechUtils.getSpeechOptions('question');
-      
+      const formattedQuestion = interviewSpeechUtils.formatQuestionForSpeech(
+        questionResponse.question
+      );
+      const speechOptions = interviewSpeechUtils.getSpeechOptions("question");
+
       // Add error handling for speech synthesis
       try {
         speechSynthesisRef.current.speak(formattedQuestion, speechOptions);
       } catch (speechError) {
-        console.error('Speech synthesis error:', speechError);
+        console.error("Speech synthesis error:", speechError);
         // Continue without speech if there's an error
       }
-
     } catch (error) {
-      console.error('Error generating first question:', error);
-      toast.error('Failed to generate AI question. Using fallback.');
-      
+      console.error("Error generating first question:", error);
+      toast.error("Failed to generate AI question. Using fallback.");
+
       // Reset the ref on error so user can retry
       firstQuestionGeneratedRef.current = false;
-      
+
       // Fallback question
-      const fallbackQuestion = "Hello! I'm your AI interviewer. Could you tell me about yourself and your experience?";
-      setInterviewState(prev => ({
+      const fallbackQuestion =
+        "Hello! I'm your AI interviewer. Could you tell me about yourself and your experience?";
+      setInterviewState((prev) => ({
         ...prev,
         currentQuestion: fallbackQuestion,
-        aiResponse: fallbackQuestion
+        aiResponse: fallbackQuestion,
       }));
-      
+
       try {
         speechSynthesisRef.current?.speak(fallbackQuestion);
       } catch (speechError) {
-        console.error('Fallback speech synthesis error:', speechError);
+        console.error("Fallback speech synthesis error:", speechError);
       }
     }
   };
@@ -549,75 +549,71 @@ export default function LiveInterviewPage() {
       "that's valuable",
       "good to hear",
       "i'd like to hear",
-      "i'd love to hear"
+      "i'd love to hear",
     ];
-    
+
     const lowerResponse = userResponse.toLowerCase();
-    const isAIGenerated = aiPhrases.some(phrase => lowerResponse.includes(phrase));
-    
+    const isAIGenerated = aiPhrases.some((phrase) =>
+      lowerResponse.includes(phrase)
+    );
+
     if (isAIGenerated) {
-      console.log('=== FRONTEND: DETECTED AI-GENERATED CONTENT ===');
-      console.log('Skipping processing of AI-generated content:', userResponse);
       return;
     }
 
     try {
-      console.log('=== FRONTEND: PROCESSING USER RESPONSE ===');
-      console.log('User said:', userResponse);
-      
       // Set thinking state
-      setInterviewState(prev => ({ ...prev, isThinking: true }));
-      
+      setInterviewState((prev) => ({ ...prev, isThinking: true }));
+
       // Get interview configuration
-      const storedConfig = sessionStorage.getItem('interviewConfig');
-      const interviewConfig = storedConfig ? JSON.parse(storedConfig) : {
-        role: 'Software Engineer',
-        level: 'mid-level',
-        type: 'technical',
-        customRequirements: 'React and modern JavaScript'
-      };
+      const storedConfig = sessionStorage.getItem("interviewConfig");
+      const interviewConfig = storedConfig
+        ? JSON.parse(storedConfig)
+        : {
+            role: "Software Engineer",
+            level: "mid-level",
+            type: "technical",
+            customRequirements: "React and modern JavaScript",
+          };
 
       // Clean the user response
-      const cleanResponse = interviewSpeechUtils.cleanUserResponse(userResponse);
-      
+      const cleanResponse =
+        interviewSpeechUtils.cleanUserResponse(userResponse);
+
       // Check if response is too short or unclear
       if (cleanResponse.length < 10) {
-        console.log('=== FRONTEND: RESPONSE TOO SHORT, IGNORING ===');
-        setInterviewState(prev => ({ ...prev, isThinking: false }));
+        setInterviewState((prev) => ({ ...prev, isThinking: false }));
         return;
       }
-      
+
       // Add user response to conversation history
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
         conversationHistory: [
           ...prev.conversationHistory,
-          { role: 'user', content: userResponse, timestamp: new Date() }
+          { role: "user", content: userResponse, timestamp: new Date() },
         ],
-        userTranscript: '',
-        isListening: false
+        userTranscript: "",
+        isListening: false,
       }));
 
       // Analyze response and generate follow-up
-      console.log('=== FRONTEND: ANALYZING RESPONSE ===');
-      const analysisResponse = await fetch('/api/interview/analyze-response', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const analysisResponse = await fetch("/api/interview/analyze-response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userResponse, context: interviewConfig }),
       });
 
-      let aiResponse = '';
-      
+      let aiResponse = "";
+
       if (analysisResponse.ok) {
         const analysis = await analysisResponse.json();
-        console.log('=== FRONTEND: ANALYSIS RECEIVED ===');
-        console.log('Analysis:', analysis);
-        
+
         // Update score
-        setInterviewState(prev => ({
+        setInterviewState((prev) => ({
           ...prev,
           score: prev.score + analysis.score,
-          feedback: analysis.feedback
+          feedback: analysis.feedback,
         }));
 
         // Respond naturally based on the analysis (without exposing the analysis to the candidate)
@@ -627,7 +623,7 @@ export default function LiveInterviewPage() {
             "Thank you for sharing that. I'd like to hear more about your experience. Could you tell me about a specific project you've worked on?",
             "That's interesting. Can you give me a concrete example of a project where you applied your skills?",
             "I'd love to hear more details. Could you walk me through a specific challenge you've solved?",
-            "Thank you for that. Can you tell me about a particular situation where you demonstrated your expertise?"
+            "Thank you for that. Can you tell me about a particular situation where you demonstrated your expertise?",
           ];
           aiResponse = followUps[Math.floor(Math.random() * followUps.length)];
         } else if (analysis.score < 80) {
@@ -636,82 +632,80 @@ export default function LiveInterviewPage() {
             "That's a good point. Let me ask you a follow-up question to explore this further.",
             "Interesting perspective. I'd like to dive deeper into that experience.",
             "That's valuable insight. Can you tell me more about how you approach such situations?",
-            "Good to hear. Let me ask you another question to understand your approach better."
+            "Good to hear. Let me ask you another question to understand your approach better.",
           ];
-          aiResponse = acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
+          aiResponse =
+            acknowledgments[Math.floor(Math.random() * acknowledgments.length)];
         } else {
           // For high scores, acknowledge excellence and move forward
           const praises = [
             "Excellent! That's very insightful. Let me ask you another question.",
             "That's a great response. I'm impressed by your approach. Let's continue.",
             "Wonderful! You've clearly thought this through. Let me ask you another question.",
-            "That's excellent work. I can see you have strong experience in this area. Let's explore further."
+            "That's excellent work. I can see you have strong experience in this area. Let's explore further.",
           ];
           aiResponse = praises[Math.floor(Math.random() * praises.length)];
         }
       } else {
-        aiResponse = "Thank you for that response. Let me ask you another question.";
+        aiResponse =
+          "Thank you for that response. Let me ask you another question.";
       }
 
       // Generate a natural follow-up question
-      console.log('=== FRONTEND: GENERATING FOLLOW-UP ===');
-      const questionResponse = await fetch('/api/interview/generate-question', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const questionResponse = await fetch("/api/interview/generate-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context: {
             ...interviewConfig,
             conversationHistory: [
               ...interviewState.conversationHistory,
-              { role: 'user', content: userResponse, timestamp: new Date() }
+              { role: "user", content: userResponse, timestamp: new Date() },
             ],
             currentQuestionNumber: interviewState.questionNumber,
             totalQuestions: interviewState.totalQuestions,
             previousQuestions: interviewState.conversationHistory
-              .filter(msg => msg.role === 'assistant')
-              .map(msg => msg.content)
+              .filter((msg) => msg.role === "assistant")
+              .map((msg) => msg.content),
           },
           userResponse,
-          isFirstQuestion: false
+          isFirstQuestion: false,
         }),
       });
 
       if (questionResponse.ok) {
         const followUpQuestion = await questionResponse.json();
         aiResponse += ` ${followUpQuestion.question}`;
-        
+
         // Update question state
-        setInterviewState(prev => ({
+        setInterviewState((prev) => ({
           ...prev,
           currentQuestion: followUpQuestion.question,
-          questionNumber: prev.questionNumber + 1
+          questionNumber: prev.questionNumber + 1,
         }));
       }
 
       // Add AI response to conversation history
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
         conversationHistory: [
           ...prev.conversationHistory,
-          { role: 'assistant', content: aiResponse, timestamp: new Date() }
+          { role: "assistant", content: aiResponse, timestamp: new Date() },
         ],
-        aiResponse: aiResponse
+        aiResponse: aiResponse,
       }));
 
       // Speak the response naturally
-      console.log('=== FRONTEND: SPEAKING RESPONSE ===');
-      console.log('AI Response:', aiResponse);
-      
-      const formattedResponse = interviewSpeechUtils.formatQuestionForSpeech(aiResponse);
-      const speechOptions = interviewSpeechUtils.getSpeechOptions('question');
+      const formattedResponse =
+        interviewSpeechUtils.formatQuestionForSpeech(aiResponse);
+      const speechOptions = interviewSpeechUtils.getSpeechOptions("question");
       speechSynthesisRef.current.speak(formattedResponse, speechOptions);
-
     } catch (error) {
-      console.error('Error handling user response:', error);
-      toast.error('Error processing your response');
+      console.error("Error handling user response:", error);
+      toast.error("Error processing your response");
     } finally {
       // Clear thinking state
-      setInterviewState(prev => ({ ...prev, isThinking: false }));
+      setInterviewState((prev) => ({ ...prev, isThinking: false }));
     }
   };
 
@@ -719,22 +713,21 @@ export default function LiveInterviewPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: true
+        audio: true,
       });
-      
+
       localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
-      
-      setInterviewState(prev => ({
+
+      setInterviewState((prev) => ({
         ...prev,
         isConnected: true,
-        isRecording: true
+        isRecording: true,
       }));
-
     } catch (error) {
-      console.error('Error accessing media devices:', error);
+      console.error("Error accessing media devices:", error);
     }
   };
 
@@ -745,7 +738,7 @@ export default function LiveInterviewPage() {
         const audioTrack = localStreamRef.current.getAudioTracks()[0];
         if (audioTrack) {
           audioTrack.enabled = !audioTrack.enabled;
-          setInterviewState(prev => ({ ...prev, isMuted: !prev.isMuted }));
+          setInterviewState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
         }
       }
     } else {
@@ -753,7 +746,7 @@ export default function LiveInterviewPage() {
       if (realtimeManagerRef.current) {
         const newMutedState = !interviewState.isMuted;
         realtimeManagerRef.current.setMuted(newMutedState);
-        setInterviewState(prev => ({ ...prev, isMuted: newMutedState }));
+        setInterviewState((prev) => ({ ...prev, isMuted: newMutedState }));
       }
     }
   };
@@ -763,7 +756,7 @@ export default function LiveInterviewPage() {
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        setInterviewState(prev => ({ ...prev, isVideoOn: !prev.isVideoOn }));
+        setInterviewState((prev) => ({ ...prev, isVideoOn: !prev.isVideoOn }));
       }
     }
   };
@@ -773,22 +766,19 @@ export default function LiveInterviewPage() {
 
     if (interviewState.isListening) {
       speechRecognitionRef.current.stopListening();
-      setInterviewState(prev => ({ ...prev, isListening: false }));
+      setInterviewState((prev) => ({ ...prev, isListening: false }));
     } else {
       speechRecognitionRef.current.startListening();
-      setInterviewState(prev => ({ ...prev, isListening: true }));
+      setInterviewState((prev) => ({ ...prev, isListening: true }));
     }
   };
 
   const endInterview = async () => {
     try {
-      console.log('=== FRONTEND: ENDING INTERVIEW ===');
-      
       // Stop all media streams
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
+        localStreamRef.current.getTracks().forEach((track) => {
           track.stop();
-          console.log('Stopped track:', track.kind);
         });
         localStreamRef.current = null;
       }
@@ -796,28 +786,24 @@ export default function LiveInterviewPage() {
       // Disconnect realtime connection
       if (realtimeManagerRef.current) {
         await realtimeManagerRef.current.disconnect();
-        console.log('Disconnected realtime connection');
       }
 
       // Stop speech recognition
       if (speechRecognitionRef.current) {
         speechRecognitionRef.current.stopListening();
-        console.log('Stopped speech recognition');
       }
 
       // Stop speech synthesis
       if (speechSynthesisRef.current) {
         speechSynthesisRef.current.stop();
-        console.log('Stopped speech synthesis');
       }
 
       // Stop audio recording if active
       if (audioRecordingRef.current && interviewState.isRecording) {
         try {
           await audioRecordingRef.current.stopRecording();
-          console.log('Stopped audio recording');
         } catch (error) {
-          console.log('Audio recording already stopped');
+          // Audio recording already stopped
         }
       }
 
@@ -828,7 +814,7 @@ export default function LiveInterviewPage() {
       }
 
       // Reset all state
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
         isConnected: false,
         isRecording: false,
@@ -838,47 +824,44 @@ export default function LiveInterviewPage() {
         isVideoOn: false,
         isMuted: true,
         realtimeConnected: false,
-        connectionState: 'disconnected'
+        connectionState: "disconnected",
       }));
 
       // Generate feedback if we have a session and conversation history
       if (sessionId && interviewState.conversationHistory.length > 0) {
-        console.log('Generating interview feedback...');
-        
-        const feedbackResponse = await fetch('/api/interview/feedback', {
-          method: 'POST',
+        const feedbackResponse = await fetch("/api/interview/feedback", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.id}`,
           },
           body: JSON.stringify({
             sessionId,
-            transcript: interviewState.conversationHistory.map(msg => ({
+            transcript: interviewState.conversationHistory.map((msg) => ({
               role: msg.role,
               content: msg.content,
-              timestamp: msg.timestamp.toISOString()
+              timestamp: msg.timestamp.toISOString(),
             })),
-            role: sessionConfig?.role || 'software-engineer',
-            level: sessionConfig?.level || 'mid-level',
-            type: sessionConfig?.type || 'mixed',
-    
-            customRequirements: sessionConfig?.customRequirements
+            role: sessionConfig?.role || "software-engineer",
+            level: sessionConfig?.level || "mid-level",
+            type: sessionConfig?.type || "mixed",
+
+            customRequirements: sessionConfig?.customRequirements,
           }),
         });
 
         if (feedbackResponse.ok) {
-          console.log('Feedback generated successfully');
           // Redirect to summary page
           router.push(`/interview/summary?sessionId=${sessionId}`);
         } else {
-          console.error('Failed to generate feedback');
-          router.push('/dashboard');
+          router.push("/dashboard");
         }
       } else {
-        router.push('/dashboard');
+        router.push("/dashboard");
       }
     } catch (error) {
-      console.error('Error ending interview:', error);
-      router.push('/dashboard');
+      console.error("Error ending interview:", error);
+      router.push("/dashboard");
     }
   };
 
@@ -899,22 +882,22 @@ export default function LiveInterviewPage() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (showEndConfirmation) {
-        if (event.key === 'Escape') {
+        if (event.key === "Escape") {
           cancelEndInterview();
-        } else if (event.key === 'Enter') {
+        } else if (event.key === "Enter") {
           confirmEndInterview();
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showEndConfirmation]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (loading || isRedirecting) {
@@ -923,7 +906,9 @@ export default function LiveInterviewPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600">
-            {isRedirecting ? 'Redirecting to login...' : 'Connecting to interview...'}
+            {isRedirecting
+              ? "Redirecting to login..."
+              : "Connecting to interview..."}
           </p>
         </div>
       </div>
@@ -935,7 +920,9 @@ export default function LiveInterviewPage() {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-900 ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+    <div
+      className={`min-h-screen bg-slate-900 ${isFullscreen ? "fixed inset-0 z-50" : ""}`}
+    >
       {/* Header */}
       <header className="bg-slate-800/90 backdrop-blur-md border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -947,37 +934,43 @@ export default function LiveInterviewPage() {
                 </div>
                 <span className="text-white font-medium">Live Interview</span>
               </div>
-              
+
               {/* Connection Status */}
               <div className="flex items-center space-x-2">
-                {interviewState.realtimeConnected || interviewState.usingFallback ? (
+                {interviewState.realtimeConnected ||
+                interviewState.usingFallback ? (
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 ) : (
                   <AlertCircle className="w-4 h-4 text-red-500" />
                 )}
                 <span className="text-sm text-slate-300">
-                  {interviewState.realtimeConnected ? 'Connected to AI' : 
-                   interviewState.usingFallback ? 'Using Speech Mode' : 'Connecting...'}
+                  {interviewState.realtimeConnected
+                    ? "Connected to AI"
+                    : interviewState.usingFallback
+                      ? "Using Speech Mode"
+                      : "Connecting..."}
                 </span>
                 <span className="text-xs text-slate-400">
                   ({interviewState.connectionState})
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {/* Timer */}
               <div className="flex items-center space-x-2 bg-slate-700 px-3 py-1 rounded-lg">
                 <Clock className="w-4 h-4 text-slate-300" />
-                <span className="text-white font-mono">{formatTime(interviewState.timeRemaining)}</span>
+                <span className="text-white font-mono">
+                  {formatTime(interviewState.timeRemaining)}
+                </span>
               </div>
-              
+
               {/* Score */}
               <div className="flex items-center space-x-2 bg-slate-700 px-3 py-1 rounded-lg">
                 <Star className="w-4 h-4 text-yellow-500" />
                 <span className="text-white">{interviewState.score}</span>
               </div>
-              
+
               {/* Fullscreen Toggle */}
               <Button
                 variant="ghost"
@@ -985,7 +978,11 @@ export default function LiveInterviewPage() {
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="text-slate-300 hover:text-white"
               >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                {isFullscreen ? (
+                  <Minimize2 className="w-4 h-4" />
+                ) : (
+                  <Maximize2 className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -999,29 +996,48 @@ export default function LiveInterviewPage() {
           {/* Question Progress Indicator */}
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-slate-700 z-10">
             <span className="text-white text-sm font-medium">
-              Question {interviewState.questionNumber} of {interviewState.totalQuestions}
+              Question {interviewState.questionNumber} of{" "}
+              {interviewState.totalQuestions}
             </span>
           </div>
-          
+
           {/* Remote Video (AI Interviewer) */}
           <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
             <div className="text-center">
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 ${
-                interviewState.isSpeaking 
-                  ? 'bg-gradient-to-br from-green-500 to-green-600 animate-pulse' 
-                  : interviewState.isThinking
-                  ? 'bg-gradient-to-br from-yellow-500 to-orange-600 animate-pulse'
-                  : interviewState.realtimeConnected || interviewState.usingFallback
-                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
-                  : 'bg-gradient-to-br from-gray-500 to-gray-600'
-              }`}>
+              <div
+                className={`w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 ${
+                  interviewState.isSpeaking
+                    ? "bg-gradient-to-br from-green-500 to-green-600 animate-pulse"
+                    : interviewState.isThinking
+                      ? "bg-gradient-to-br from-yellow-500 to-orange-600 animate-pulse"
+                      : interviewState.realtimeConnected ||
+                          interviewState.usingFallback
+                        ? "bg-gradient-to-br from-blue-500 to-indigo-600"
+                        : "bg-gradient-to-br from-gray-500 to-gray-600"
+                }`}
+              >
                 {interviewState.isSpeaking ? (
                   <Volume2 className="w-16 h-16 text-white" />
                 ) : interviewState.isThinking ? (
                   <div className="w-16 h-16 text-white animate-spin">
-                    <svg className="w-full h-full" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="w-full h-full"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                   </div>
                 ) : interviewState.realtimeConnected ? (
@@ -1032,26 +1048,31 @@ export default function LiveInterviewPage() {
                   <WifiOff className="w-16 h-16 text-white" />
                 )}
               </div>
-              <h2 className="text-white text-xl font-semibold mb-2">AI Interviewer</h2>
+              <h2 className="text-white text-xl font-semibold mb-2">
+                AI Interviewer
+              </h2>
               <p className="text-slate-400">
-                {interviewState.isSpeaking 
-                  ? 'Speaking...' 
-                  : interviewState.isThinking 
-                  ? 'Thinking...' 
-                  : interviewState.realtimeConnected
-                  ? 'Ready for conversation...'
-                  : interviewState.usingFallback
-                  ? 'Speech mode active...'
-                  : 'Connecting to AI...'}
+                {interviewState.isSpeaking
+                  ? "Speaking..."
+                  : interviewState.isThinking
+                    ? "Thinking..."
+                    : interviewState.realtimeConnected
+                      ? "Ready for conversation..."
+                      : interviewState.usingFallback
+                        ? "Speech mode active..."
+                        : "Connecting to AI..."}
               </p>
-              
+
               {/* Connection Status */}
-              {!interviewState.realtimeConnected && !interviewState.usingFallback && (
-                <div className="mt-4 flex items-center justify-center space-x-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                  <span className="text-yellow-400 text-sm">Connecting...</span>
-                </div>
-              )}
+              {!interviewState.realtimeConnected &&
+                !interviewState.usingFallback && (
+                  <div className="mt-4 flex items-center justify-center space-x-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span className="text-yellow-400 text-sm">
+                      Connecting...
+                    </span>
+                  </div>
+                )}
 
               {/* Voice Activity Indicator for Fallback Mode */}
               {interviewState.usingFallback && interviewState.isListening && (
@@ -1106,8 +1127,11 @@ export default function LiveInterviewPage() {
                         <WifiOff className="w-4 h-4 text-red-500" />
                       )}
                       <span className="text-sm text-slate-300">
-                        {interviewState.realtimeConnected ? 'Realtime Mode' : 
-                         interviewState.usingFallback ? 'Speech Mode' : 'Disconnected'}
+                        {interviewState.realtimeConnected
+                          ? "Realtime Mode"
+                          : interviewState.usingFallback
+                            ? "Speech Mode"
+                            : "Disconnected"}
                       </span>
                     </div>
                     <span className="text-xs text-slate-400">
@@ -1122,13 +1146,17 @@ export default function LiveInterviewPage() {
                 <div className="space-y-3">
                   <Button
                     onClick={toggleListening}
-                    variant={interviewState.isListening ? "destructive" : "default"}
+                    variant={
+                      interviewState.isListening ? "destructive" : "default"
+                    }
                     className={`w-full ${
-                      interviewState.isListening 
-                        ? 'bg-red-600 hover:bg-red-700' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                      interviewState.isListening
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                     }`}
-                    disabled={interviewState.isSpeaking || interviewState.isThinking}
+                    disabled={
+                      interviewState.isSpeaking || interviewState.isThinking
+                    }
                   >
                     {interviewState.isListening ? (
                       <>
@@ -1143,42 +1171,54 @@ export default function LiveInterviewPage() {
                     )}
                   </Button>
 
-                  {interviewState.isListening && interviewState.userTranscript && interviewState.userTranscript.length > 20 && (
-                    <Button
-                      onClick={() => {
-                        if (speechRecognitionRef.current) {
-                          speechRecognitionRef.current.stopListening();
-                          setInterviewState(prev => ({ ...prev, isListening: false }));
-                          // Process the current transcript as a complete response
-                          handleUserResponse(interviewState.userTranscript);
-                        }
-                      }}
-                      className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Response
-                    </Button>
-                  )}
+                  {interviewState.isListening &&
+                    interviewState.userTranscript &&
+                    interviewState.userTranscript.length > 20 && (
+                      <Button
+                        onClick={() => {
+                          if (speechRecognitionRef.current) {
+                            speechRecognitionRef.current.stopListening();
+                            setInterviewState((prev) => ({
+                              ...prev,
+                              isListening: false,
+                            }));
+                            // Process the current transcript as a complete response
+                            handleUserResponse(interviewState.userTranscript);
+                          }
+                        }}
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Send Response
+                      </Button>
+                    )}
                 </div>
               )}
 
               {/* Conversation History */}
               <Card className="border-slate-700 bg-slate-700/50">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-white">Conversation</CardTitle>
+                  <CardTitle className="text-sm text-white">
+                    Conversation
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   <div className="space-y-3 max-h-64 overflow-y-auto">
                     {interviewState.conversationHistory.map((msg, index) => (
-                      <div key={index} className={`text-sm ${
-                        msg.role === 'user' ? 'text-blue-300' : 'text-green-300'
-                      }`}>
+                      <div
+                        key={index}
+                        className={`text-sm ${
+                          msg.role === "user"
+                            ? "text-blue-300"
+                            : "text-green-300"
+                        }`}
+                      >
                         <div className="font-medium">
-                          {msg.role === 'user' ? 'You' : 'AI'}:
+                          {msg.role === "user" ? "You" : "AI"}:
                         </div>
                         <div className="mt-1 text-slate-300">
-                          {msg.content.length > 100 
-                            ? `${msg.content.substring(0, 100)}...` 
+                          {msg.content.length > 100
+                            ? `${msg.content.substring(0, 100)}...`
                             : msg.content}
                         </div>
                       </div>
@@ -1206,7 +1246,7 @@ export default function LiveInterviewPage() {
                 <Settings className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-4 gap-3">
               <Button
                 variant={interviewState.isMuted ? "destructive" : "outline"}
@@ -1214,18 +1254,26 @@ export default function LiveInterviewPage() {
                 onClick={toggleMute}
                 className="border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white"
               >
-                {interviewState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {interviewState.isMuted ? (
+                  <MicOff className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
               </Button>
-              
+
               <Button
                 variant={!interviewState.isVideoOn ? "destructive" : "outline"}
                 size="sm"
                 onClick={toggleVideo}
                 className="border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white"
               >
-                {!interviewState.isVideoOn ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                {!interviewState.isVideoOn ? (
+                  <VideoOff className="w-4 h-4" />
+                ) : (
+                  <Video className="w-4 h-4" />
+                )}
               </Button>
-              
+
               <Button
                 variant={interviewState.isSpeaking ? "destructive" : "outline"}
                 size="sm"
@@ -1233,9 +1281,13 @@ export default function LiveInterviewPage() {
                 className="border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white"
                 disabled={!interviewState.isSpeaking}
               >
-                {interviewState.isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                {interviewState.isSpeaking ? (
+                  <VolumeX className="w-4 h-4" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
               </Button>
-              
+
               <Button
                 variant="destructive"
                 size="sm"
@@ -1257,13 +1309,15 @@ export default function LiveInterviewPage() {
               <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center mr-3">
                 <PhoneOff className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-white text-lg font-semibold">End Interview</h3>
+              <h3 className="text-white text-lg font-semibold">
+                End Interview
+              </h3>
             </div>
-            
+
             <p className="text-slate-300 mb-6">
               Are you sure you want to end this interview? This action will:
             </p>
-            
+
             <ul className="text-slate-400 text-sm mb-6 space-y-2">
               <li className="flex items-center">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></div>
@@ -1278,7 +1332,7 @@ export default function LiveInterviewPage() {
                 Generate feedback and redirect to summary
               </li>
             </ul>
-            
+
             <div className="flex space-x-3">
               <Button
                 onClick={cancelEndInterview}

@@ -1,3 +1,5 @@
+import { CreditsService } from './credits-service';
+
 // Initialize OpenAI client with fallback
 let openai: any = null;
 
@@ -13,7 +15,6 @@ const initializeOpenAI = () => {
       openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
       });
-      console.log('OpenAI client initialized successfully');
     } else {
       console.warn('OpenAI API key not found, using mock responses');
     }
@@ -40,15 +41,12 @@ export interface InterviewContext {
 }
 
 // Speech-to-Text using OpenAI Whisper
-export async function transcribeAudio(audioBlob: Blob): Promise<string> {
+export async function transcribeAudio(audioBlob: Blob, userId?: string, interviewId?: string): Promise<string> {
   try {
     const client = initializeOpenAI();
     if (!client) {
-      console.log('OpenAI client not available, using fallback transcription');
       return "I'm sorry, I couldn't hear you clearly. Could you please repeat that?";
     }
-
-    console.log('=== OPENAI: TRANSCRIBING AUDIO ===');
     
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.webm');
@@ -62,8 +60,6 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     });
 
     const transcript = response as any;
-    console.log('=== OPENAI: TRANSCRIPTION COMPLETE ===');
-    console.log('Transcript:', transcript);
     
     return transcript || "I couldn't understand what you said. Could you please repeat that?";
   } catch (error) {
@@ -77,11 +73,11 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 export async function generateInterviewQuestion(
   context: InterviewContext,
   userResponse?: string,
-  isFirstQuestion: boolean = false
+  isFirstQuestion: boolean = false,
+  userId?: string,
+  interviewId?: string
 ): Promise<string> {
   try {
-    console.log('=== OPENAI: GENERATING INTERVIEW QUESTION ===');
-    
     let systemPrompt: string;
     let userPrompt: string;
 
@@ -134,8 +130,15 @@ Current question number: ${context.currentQuestionNumber}/${context.totalQuestio
 
     const client = initializeOpenAI();
     if (!client) {
-      console.log('OpenAI client not available, using fallback response');
       return "Hello! Welcome to your interview. To start off, could you tell me about yourself? Please share your background, experience, and what interests you about this position.";
+    }
+
+    // Deduct credits before making OpenAI API call
+    if (userId && interviewId) {
+      const creditsDeducted = await CreditsService.deductOpenAICredits(userId, interviewId, 200); // Estimate tokens
+      if (!creditsDeducted) {
+        return "I'm sorry, you don't have enough credits to continue this interview. Please purchase more credits to continue.";
+      }
     }
 
     const completion = await client.chat.completions.create({
@@ -149,8 +152,6 @@ Current question number: ${context.currentQuestionNumber}/${context.totalQuestio
     });
 
     const question = completion.choices[0]?.message?.content?.trim();
-    console.log('=== OPENAI: GENERATED QUESTION ===');
-    console.log('Question:', question);
     
     return question || "Hello! Welcome to your interview. Could you tell me about yourself and your experience?";
   } catch (error) {
@@ -167,8 +168,6 @@ export async function handleUserQuestion(
   context: InterviewContext
 ): Promise<string> {
   try {
-    console.log('=== OPENAI: HANDLING USER QUESTION ===');
-    
     const systemPrompt = `You are an expert technical interviewer conducting a ${context.type} interview for a ${context.level} ${context.role} position. 
 
 The candidate has asked you a question. Your role is to:
@@ -187,7 +186,6 @@ After answering, ask if they have any other questions or if they'd like to conti
 
     const client = initializeOpenAI();
     if (!client) {
-      console.log('OpenAI client not available, using fallback answer');
       return "That's a great question! I'd be happy to answer that. Could you please clarify what specific aspect you'd like me to explain?";
     }
 
@@ -202,8 +200,6 @@ After answering, ask if they have any other questions or if they'd like to conti
     });
 
     const answer = completion.choices[0]?.message?.content?.trim();
-    console.log('=== OPENAI: GENERATED ANSWER ===');
-    console.log('Answer:', answer);
     
     return answer || "That's a great question! I'd be happy to answer that. Could you please clarify what specific aspect you'd like me to explain?";
   } catch (error) {
@@ -216,7 +212,9 @@ After answering, ask if they have any other questions or if they'd like to conti
 // Analyze user response using OpenAI
 export async function analyzeUserResponse(
   userResponse: string,
-  context: InterviewContext
+  context: InterviewContext,
+  userId?: string,
+  interviewId?: string
 ): Promise<{
   score: number;
   feedback: string;
@@ -226,8 +224,6 @@ export async function analyzeUserResponse(
   category: 'technical' | 'behavioral' | 'problem-solving' | 'communication';
 }> {
   try {
-    console.log('=== OPENAI: ANALYZING USER RESPONSE ===');
-    
     const systemPrompt = `You are an expert interview analyst evaluating a candidate's response for a ${context.level} ${context.role} position.
 
 Analyze the response and provide:
@@ -259,7 +255,6 @@ Please provide your analysis in JSON format:
 
     const client = initializeOpenAI();
     if (!client) {
-      console.log('OpenAI client not available, using fallback analysis');
       return {
         score: 70,
         feedback: "Good response. Consider providing more specific examples.",
@@ -268,6 +263,21 @@ Please provide your analysis in JSON format:
         suggestions: ["Add more technical details", "Provide specific examples"],
         category: "behavioral" as const
       };
+    }
+
+    // Deduct credits before making OpenAI API call
+    if (userId && interviewId) {
+      const creditsDeducted = await CreditsService.deductOpenAICredits(userId, interviewId, 500); // Estimate tokens for analysis
+      if (!creditsDeducted) {
+        return {
+          score: 0,
+          feedback: "You don't have enough credits to analyze this response. Please purchase more credits to continue.",
+          keywords: [],
+          confidence: 0,
+          suggestions: ["Purchase more credits to continue the interview."],
+          category: 'communication' as const
+        };
+      }
     }
 
     const completion = await client.chat.completions.create({
@@ -281,14 +291,21 @@ Please provide your analysis in JSON format:
     });
 
     const response = completion.choices[0]?.message?.content?.trim();
-    console.log('=== OPENAI: ANALYSIS RESPONSE ===');
-    console.log('Raw Response:', response);
     
     if (response) {
       try {
         const analysis = JSON.parse(response);
-        console.log('=== OPENAI: PARSED ANALYSIS ===');
-        console.log('Analysis:', analysis);
+        
+        // Round score to 1 decimal place
+        if (analysis.score !== undefined) {
+          analysis.score = Math.round(analysis.score * 10) / 10;
+        }
+        
+        // Round confidence to 2 decimal places
+        if (analysis.confidence !== undefined) {
+          analysis.confidence = Math.round(analysis.confidence * 100) / 100;
+        }
+        
         return analysis;
       } catch (parseError) {
         console.error('Failed to parse analysis response:', parseError);
@@ -329,7 +346,7 @@ export async function generateInterviewFeedback(context: {
   level: string;
   type: string;
   customRequirements?: string;
-}): Promise<{
+}, userId?: string, interviewId?: string): Promise<{
   overallScore: number;
   communication: {
     score: number;
@@ -356,17 +373,69 @@ export async function generateInterviewFeedback(context: {
   recommendations: string[];
 }> {
   try {
-    console.log('=== OPENAI: GENERATING INTERVIEW FEEDBACK ===');
-    
-    const systemPrompt = `You are an expert interview analyst providing comprehensive feedback for a ${context.level} ${context.role} interview.
+    const systemPrompt = `You are an expert interview feedback system. Analyze the provided interview transcript and provide comprehensive feedback in JSON format.
 
-Analyze the interview transcript and provide detailed feedback across four key areas:
-1. Communication - clarity, articulation, and professional communication
-2. Technical Depth - knowledge, problem-solving, and technical expertise
-3. Confidence - self-assurance, poise, and presentation
-4. Clarity - organization of thoughts and logical flow
+IMPORTANT: 
+- If the transcript is incomplete or only contains interviewer questions without user responses, provide constructive feedback based on what's available
+- If there are user responses, analyze them thoroughly
+- Always return valid JSON, never plain text explanations
+- Focus on the interviewee's performance, not the interviewer's
 
-Provide specific, actionable feedback with scores (0-100) for each area.`;
+For each interview, provide feedback in this exact JSON format:
+{
+  "overallScore": number (0-100),
+  "communication": {
+    "score": number (0-100),
+    "feedback": "string",
+    "suggestions": ["string"]
+  },
+  "technicalDepth": {
+    "score": number (0-100),
+    "feedback": "string", 
+    "suggestions": ["string"]
+  },
+  "confidence": {
+    "score": number (0-100),
+    "feedback": "string",
+    "suggestions": ["string"]
+  },
+  "clarity": {
+    "score": number (0-100),
+    "feedback": "string",
+    "suggestions": ["string"]
+  },
+  "strengths": ["string"],
+  "areasForImprovement": ["string"],
+  "recommendations": ["string"]
+}
+
+If the transcript is incomplete or lacks user responses, provide feedback like:
+{
+  "overallScore": 70,
+  "communication": {
+    "score": 75,
+    "feedback": "Unable to assess communication fully due to incomplete transcript. Consider providing more detailed responses in future interviews.",
+    "suggestions": ["Provide more detailed responses", "Share specific examples from experience"]
+  },
+  "technicalDepth": {
+    "score": 70,
+    "feedback": "Technical assessment limited due to incomplete transcript. Focus on demonstrating technical knowledge in responses.",
+    "suggestions": ["Include technical details in responses", "Provide code examples when relevant"]
+  },
+  "confidence": {
+    "score": 75,
+    "feedback": "Confidence assessment limited. Practice speaking clearly and confidently.",
+    "suggestions": ["Practice speaking clearly", "Maintain confident posture"]
+  },
+  "clarity": {
+    "score": 80,
+    "feedback": "Clarity assessment limited. Focus on clear, structured responses.",
+    "suggestions": ["Structure responses clearly", "Use specific examples"]
+  },
+  "strengths": ["Interview preparation", "Professional approach"],
+  "areasForImprovement": ["Provide more detailed responses", "Include specific examples"],
+  "recommendations": ["Practice mock interviews", "Prepare detailed responses", "Include specific examples from experience"]
+}`;
 
     const userPrompt = `Interview Transcript:
 ${context.transcript.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
@@ -407,7 +476,6 @@ Please provide comprehensive feedback in JSON format:
 
     const client = initializeOpenAI();
     if (!client) {
-      console.log('OpenAI client not available, using fallback feedback');
       return {
         overallScore: 75,
         communication: {
@@ -448,6 +516,39 @@ Please provide comprehensive feedback in JSON format:
       };
     }
 
+    // Deduct credits before making OpenAI API call
+    if (userId && interviewId) {
+      const creditsDeducted = await CreditsService.deductOpenAICredits(userId, interviewId, 1000); // Estimate tokens for feedback generation
+      if (!creditsDeducted) {
+        return {
+          overallScore: 0,
+          communication: {
+            score: 0,
+            feedback: "You don't have enough credits to generate feedback. Please purchase more credits to continue.",
+            suggestions: ["Purchase more credits to continue"]
+          },
+          technicalDepth: {
+            score: 0,
+            feedback: "Credit limit reached.",
+            suggestions: ["Purchase more credits"]
+          },
+          confidence: {
+            score: 0,
+            feedback: "Credit limit reached.",
+            suggestions: ["Purchase more credits"]
+          },
+          clarity: {
+            score: 0,
+            feedback: "Credit limit reached.",
+            suggestions: ["Purchase more credits"]
+          },
+          strengths: [],
+          areasForImprovement: ["Purchase more credits to continue"],
+          recommendations: ["Purchase more credits to continue using the service"]
+        };
+      }
+    }
+
     const completion = await client.chat.completions.create({
       model: "gpt-4",
       messages: [
@@ -459,17 +560,44 @@ Please provide comprehensive feedback in JSON format:
     });
 
     const response = completion.choices[0]?.message?.content?.trim();
-    console.log('=== OPENAI: FEEDBACK RESPONSE ===');
-    console.log('Raw Response:', response);
     
     if (response) {
       try {
+        // Check if response starts with common error messages
+        if (response.toLowerCase().startsWith("i'm sorry") || 
+            response.toLowerCase().startsWith("i apologize") ||
+            response.toLowerCase().startsWith("unfortunately")) {
+          console.warn('OpenAI returned error message instead of JSON:', response.substring(0, 100));
+          throw new Error('OpenAI returned error message');
+        }
+        
         const feedback = JSON.parse(response);
-        console.log('=== OPENAI: PARSED FEEDBACK ===');
-        console.log('Feedback:', feedback);
+        
+        // Round all scores to 1 decimal place
+        if (feedback.overallScore !== undefined) {
+          feedback.overallScore = Math.round(feedback.overallScore * 10) / 10;
+        }
+        
+        if (feedback.communication?.score !== undefined) {
+          feedback.communication.score = Math.round(feedback.communication.score * 10) / 10;
+        }
+        
+        if (feedback.technicalDepth?.score !== undefined) {
+          feedback.technicalDepth.score = Math.round(feedback.technicalDepth.score * 10) / 10;
+        }
+        
+        if (feedback.confidence?.score !== undefined) {
+          feedback.confidence.score = Math.round(feedback.confidence.score * 10) / 10;
+        }
+        
+        if (feedback.clarity?.score !== undefined) {
+          feedback.clarity.score = Math.round(feedback.clarity.score * 10) / 10;
+        }
+        
         return feedback;
       } catch (parseError) {
         console.error('Failed to parse feedback response:', parseError);
+        console.error('Raw response:', response);
       }
     }
     

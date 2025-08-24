@@ -6,14 +6,10 @@
  */
 async function globalTeardown(config) {
   // Clean up test data if needed
-  console.log('Cleaning up test environment...');
-  
   // You can add cleanup logic here such as:
   // - Removing test users from database
   // - Cleaning up test files
   // - Resetting test state
-  
-  console.log('Test environment cleanup completed');
 }
 
 module.exports = globalTeardown;

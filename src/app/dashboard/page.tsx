@@ -1,6 +1,10 @@
 "use client";
 
 import { useAuth } from "@/components/providers";
+import {
+  useUserProfile,
+  UserProfileProvider,
+} from "@/components/user-profile-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CreditDisplay } from "@/components/ui/credit-display";
+import { CreditPurchaseModal } from "@/components/ui/credit-purchase-modal";
 import {
   Mic,
   User,
@@ -32,10 +38,11 @@ import {
   Download,
   Share2,
   Brain,
+  Coins,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 // Interface for interview data
 interface InterviewData {
@@ -51,6 +58,12 @@ interface InterviewData {
     technicalDepth: { score: number };
     confidence: { score: number };
     clarity: { score: number };
+    skillBreakdown?: {
+      communication?: { score: number };
+      technical?: { score: number };
+      confidence?: { score: number };
+      clarity?: { score: number };
+    };
   };
   status: string;
   created_at: string;
@@ -66,9 +79,32 @@ interface PerformanceStats {
 
 export default function DashboardPage() {
   const { user, loading, signOut } = useAuth();
+
+  // Wrap the component with UserProfileProvider
+  return (
+    <UserProfileProvider>
+      <DashboardContent user={user} loading={loading} signOut={signOut} />
+    </UserProfileProvider>
+  );
+}
+
+function DashboardContent({
+  user,
+  loading,
+  signOut,
+}: {
+  user: any;
+  loading: boolean;
+  signOut: () => Promise<void>;
+}) {
+  const {
+    profile,
+    hasCompletedProfile,
+    profileCompletionPercentage,
+    loading: profileLoading,
+  } = useUserProfile();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [interviewHistory, setInterviewHistory] = useState<InterviewData[]>([]);
   const [performanceStats, setPerformanceStats] = useState<PerformanceStats>({
     totalInterviews: 0,
@@ -77,42 +113,29 @@ export default function DashboardPage() {
     totalTime: "0 hours",
   });
   const [loadingData, setLoadingData] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      setIsRedirecting(true);
-      router.push("/login?redirectTo=/dashboard");
-    }
-  }, [user, loading, router]);
+    // Let middleware handle authentication redirects
+    // Only show loading state while auth is being determined
+  }, [user, loading]);
 
-  // Fetch user-specific data when user is available
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
+  const fetchDashboardData = React.useCallback(async () => {
+    if (!user?.id) return;
 
-  const fetchDashboardData = async () => {
     try {
       setLoadingData(true);
 
       // Fetch interview history for the current user
       const response = await fetch("/api/interview/history", {
         headers: {
-          Authorization: `Bearer ${user?.id}`, // Send user ID for filtering
+          Authorization: `Bearer ${user.id}`, // Send user ID for filtering
         },
       });
 
       if (response.ok) {
         const data = await response.json();
         const userInterviews = data.interviews || [];
-
-        console.log("Dashboard data:", {
-          totalInterviews: data.total,
-          userInterviews: userInterviews.length,
-          userId: user?.id,
-          interviews: userInterviews,
-        });
 
         setInterviewHistory(userInterviews);
 
@@ -146,7 +169,14 @@ export default function DashboardPage() {
 
         setPerformanceStats({
           totalInterviews,
-          averageScore: Math.round(averageScore * 10) / 10,
+          averageScore: (() => {
+            const avgScore = averageScore;
+            // If average score is already in 0-100 range, don't multiply
+            // If average score is in 0-10 range, multiply by 10
+            return avgScore > 10
+              ? Math.round(avgScore)
+              : Math.round(avgScore * 10);
+          })(),
           thisWeek,
           totalTime: `${totalHours} hours`,
         });
@@ -156,22 +186,47 @@ export default function DashboardPage() {
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [user?.id]);
+
+  // Fetch user-specific data when user is available
+  useEffect(() => {
+    if (user?.id) {
+      fetchDashboardData();
+    }
+  }, [user?.id, fetchDashboardData]);
 
   const handleSignOut = async () => {
     await signOut();
     router.push("/");
   };
 
+  const formatRoleName = (role: string, level: string) => {
+    const roleMap: { [key: string]: string } = {
+      "software-engineer": "Software Engineer",
+      "frontend-developer": "Frontend Developer",
+      "backend-developer": "Backend Developer",
+      "fullstack-developer": "Full Stack Developer",
+      "data-scientist": "Data Scientist",
+      "devops-engineer": "DevOps Engineer",
+      "product-manager": "Product Manager",
+      "ui-ux-designer": "UI/UX Designer",
+      "qa-engineer": "QA Engineer",
+      "mobile-developer": "Mobile Developer",
+    };
+
+    const formattedRole =
+      roleMap[role] ||
+      role.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    return `${formattedRole} ${level}`;
+  };
+
   // Show loading state while checking authentication
-  if (loading || isRedirecting) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">
-            {isRedirecting ? "Redirecting to login..." : "Loading dashboard..."}
-          </p>
+          <p className="text-slate-600">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -233,6 +288,43 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Profile Setup Prompt */}
+        {!profileLoading && !hasCompletedProfile && (
+          <div className="mb-8">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-blue-500">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                      Complete Your Profile
+                    </h3>
+                    <p className="text-blue-800 mb-4">
+                      To provide you with personalized interview experiences and
+                      accurate feedback, please complete your profile setup.
+                      This helps us tailor questions and recommendations to your
+                      specific needs.
+                    </p>
+                    <div className="flex items-center space-x-4">
+                      <Link href="/profile/setup">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Complete Profile Setup
+                        </Button>
+                      </Link>
+                      <span className="text-sm text-blue-700">
+                        {profileCompletionPercentage}% Complete
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
@@ -276,10 +368,37 @@ export default function DashboardPage() {
               </Link>
             </CardContent>
           </Card>
+
+          <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <Coins className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    Credits & Billing
+                  </h3>
+                  <p className="text-sm text-slate-600">Manage your credits</p>
+                </div>
+              </div>
+              <Link href="/dashboard/credits">
+                <Button className="w-full mt-4 bg-yellow-600 hover:bg-yellow-700 text-white">
+                  <Coins className="w-4 h-4 mr-2" />
+                  View Credits
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Stats Overview */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <CreditDisplay
+            className="md:col-span-2 lg:col-span-1"
+            showPurchaseButton={true}
+            onPurchaseClick={() => setShowPurchaseModal(true)}
+          />
           <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -306,7 +425,7 @@ export default function DashboardPage() {
                     Average Score
                   </p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {performanceStats.averageScore}/10
+                    {performanceStats.averageScore}/100
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
@@ -369,6 +488,7 @@ export default function DashboardPage() {
                 variant="outline"
                 size="sm"
                 className="border-slate-300 hover:border-slate-400"
+                onClick={() => router.push("/dashboard/history")}
               >
                 View All
               </Button>
@@ -395,7 +515,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="font-medium text-slate-900">
-                          {interview.role} {interview.level}
+                          {formatRoleName(interview.role, interview.level)}
                         </p>
                         <div className="flex items-center space-x-4 text-sm text-slate-600">
                           <span className="flex items-center">
@@ -417,13 +537,18 @@ export default function DashboardPage() {
                     <div className="flex items-center space-x-3">
                       <div className="text-right">
                         <p className="text-lg font-bold text-slate-900">
-                          {interview.feedback?.overallScore || "N/A"}/10
+                          {(() => {
+                            const score = interview.feedback?.overallScore || 0;
+                            // If score is already in 0-100 range, don't multiply
+                            // If score is in 0-10 range, multiply by 10
+                            const displayScore =
+                              score > 10 ? score : Math.round(score * 10);
+                            return `${displayScore}/100`;
+                          })()}
                         </p>
                         <p className="text-sm text-slate-600">Score</p>
                       </div>
-                      <Link
-                        href={`/interview/summary?sessionId=${interview.id}`}
-                      >
+                      <Link href={`/interview/summary/${interview.id}`}>
                         <Button
                           size="sm"
                           variant="outline"
@@ -532,6 +657,16 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Credit Purchase Modal */}
+      <CreditPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        onPurchaseSuccess={() => {
+          // Refresh the page to update credit display
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

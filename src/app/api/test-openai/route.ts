@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Testing OpenAI API key...');
-    
     // Check if API key is available
     if (!process.env.OPENAI_API_KEY) {
       console.error('OPENAI_API_KEY is not set');
@@ -22,8 +20,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log('OpenAI models API response status:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI API test failed:', errorText);
@@ -38,7 +34,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('OpenAI API test successful');
     
     // Check if realtime models are available
     const hasRealtimeModel = data.data?.some((model: any) => 

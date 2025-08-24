@@ -1,69 +1,124 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
-import { Toaster } from 'react-hot-toast';
+import { createContext, useContext, useEffect, useState } from "react";
+import { Toaster } from "react-hot-toast";
+import { authManager, AuthUser } from "@/lib/auth";
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<AuthUser | null>;
+  signUp: (email: string, password: string) => Promise<AuthUser | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   loading: true,
   signOut: async () => {},
+  signIn: async () => null,
+  signUp: async () => null,
 });
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const currentUser = await authManager.initialize();
+
+        if (mounted) {
+          setUser(currentUser);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("AuthProvider: Initialization error:", error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
     };
 
-    getInitialSession();
+    // Setup auth listener
+    authManager.setupAuthListener();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    // Initialize auth
+    initializeAuth();
+
+    // Subscribe to auth changes
+    const unsubscribe = authManager.subscribe((user) => {
+      if (mounted) {
+        setUser(user);
         setLoading(false);
       }
-    );
+    });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
+  const signIn = async (
+    email: string,
+    password: string
+  ): Promise<AuthUser | null> => {
+    try {
+      setLoading(true);
+      const user = await authManager.signIn(email, password);
+      return user;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (
+    email: string,
+    password: string
+  ): Promise<AuthUser | null> => {
+    try {
+      setLoading(true);
+      const user = await authManager.signUp(email, password);
+      return user;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      setLoading(true);
+      await authManager.signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const value = {
     user,
-    session,
     loading,
     signOut,
+    signIn,
+    signUp,
   };
 
   return (
@@ -74,21 +129,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#363636',
-            color: '#fff',
+            background: "#363636",
+            color: "#fff",
           },
           success: {
             duration: 3000,
             iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
+              primary: "#10b981",
+              secondary: "#fff",
             },
           },
           error: {
             duration: 4000,
             iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
+              primary: "#ef4444",
+              secondary: "#fff",
             },
           },
         }}

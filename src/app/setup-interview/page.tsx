@@ -1,16 +1,30 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/providers';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Mic, 
-  User, 
-  Settings, 
+import { useAuth } from "@/components/providers";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CreditDisplay } from "@/components/ui/credit-display";
+import { CreditPurchaseModal } from "@/components/ui/credit-purchase-modal";
+import {
+  Mic,
+  User,
+  Settings,
   Clock,
   Target,
   Star,
@@ -21,48 +35,78 @@ import {
   Headphones,
   Wifi,
   Zap,
-  Brain
-} from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+  Brain,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 // Interview configuration options
 const jobRoles = [
-  { value: 'software-engineer', label: 'Software Engineer', icon: '💻' },
-  { value: 'frontend-developer', label: 'Frontend Developer', icon: '🎨' },
-  { value: 'backend-developer', label: 'Backend Developer', icon: '⚙️' },
-  { value: 'fullstack-developer', label: 'Full Stack Developer', icon: '🔄' },
-  { value: 'data-scientist', label: 'Data Scientist', icon: '📊' },
-  { value: 'devops-engineer', label: 'DevOps Engineer', icon: '🐳' },
-  { value: 'product-manager', label: 'Product Manager', icon: '📋' },
-  { value: 'ui-ux-designer', label: 'UI/UX Designer', icon: '🎯' },
-  { value: 'qa-engineer', label: 'QA Engineer', icon: '🔍' },
-  { value: 'mobile-developer', label: 'Mobile Developer', icon: '📱' }
+  { value: "software-engineer", label: "Software Engineer", icon: "💻" },
+  { value: "frontend-developer", label: "Frontend Developer", icon: "🎨" },
+  { value: "backend-developer", label: "Backend Developer", icon: "⚙️" },
+  { value: "fullstack-developer", label: "Full Stack Developer", icon: "🔄" },
+  { value: "data-scientist", label: "Data Scientist", icon: "📊" },
+  { value: "devops-engineer", label: "DevOps Engineer", icon: "🐳" },
+  { value: "product-manager", label: "Product Manager", icon: "📋" },
+  { value: "ui-ux-designer", label: "UI/UX Designer", icon: "🎯" },
+  { value: "qa-engineer", label: "QA Engineer", icon: "🔍" },
+  { value: "mobile-developer", label: "Mobile Developer", icon: "📱" },
 ];
 
 const experienceLevels = [
-  { value: 'junior', label: 'Junior (0-2 years)', description: 'Entry level positions' },
-  { value: 'mid-level', label: 'Mid-Level (3-5 years)', description: 'Intermediate positions' },
-  { value: 'senior', label: 'Senior (6-8 years)', description: 'Advanced positions' },
-  { value: 'lead', label: 'Lead (8+ years)', description: 'Leadership positions' }
+  {
+    value: "junior",
+    label: "Junior (0-2 years)",
+    description: "Entry level positions",
+  },
+  {
+    value: "mid-level",
+    label: "Mid-Level (3-5 years)",
+    description: "Intermediate positions",
+  },
+  {
+    value: "senior",
+    label: "Senior (6-8 years)",
+    description: "Advanced positions",
+  },
+  {
+    value: "lead",
+    label: "Lead (8+ years)",
+    description: "Leadership positions",
+  },
 ];
 
 const interviewTypes = [
-  { value: 'technical', label: 'Technical Interview', description: 'Focus on technical skills and problem solving' },
-  { value: 'behavioral', label: 'Behavioral Interview', description: 'Focus on soft skills and past experiences' },
-  { value: 'mixed', label: 'Mixed Interview', description: 'Combination of technical and behavioral questions' },
-  { value: 'case-study', label: 'Case Study', description: 'Real-world problem solving scenarios' }
+  {
+    value: "technical",
+    label: "Technical Interview",
+    description: "Focus on technical skills and problem solving",
+  },
+  {
+    value: "behavioral",
+    label: "Behavioral Interview",
+    description: "Focus on soft skills and past experiences",
+  },
+  {
+    value: "mixed",
+    label: "Mixed Interview",
+    description: "Combination of technical and behavioral questions",
+  },
+  {
+    value: "case-study",
+    label: "Case Study",
+    description: "Real-world problem solving scenarios",
+  },
 ];
 
 const interviewDurations = [
-  { value: '15', label: '15 minutes', description: 'Quick assessment' },
-  { value: '30', label: '30 minutes', description: 'Standard interview' },
-  { value: '45', label: '45 minutes', description: 'Comprehensive interview' },
-  { value: '60', label: '60 minutes', description: 'Full interview session' }
+  { value: "15", label: "15 minutes", description: "Quick assessment" },
+  { value: "30", label: "30 minutes", description: "Standard interview" },
+  { value: "45", label: "45 minutes", description: "Comprehensive interview" },
+  { value: "60", label: "60 minutes", description: "Full interview session" },
 ];
-
-
 
 export default function SetupInterviewPage() {
   const { user, loading } = useAuth();
@@ -72,30 +116,39 @@ export default function SetupInterviewPage() {
   const [equipmentStatus, setEquipmentStatus] = useState({
     microphone: false,
     camera: false,
-    internet: false
+    internet: false,
   });
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [requiredCredits, setRequiredCredits] = useState<number | null>(null);
 
   // Interview configuration state
   const [interviewConfig, setInterviewConfig] = useState({
-    role: '',
-    level: '',
-    type: '',
-          duration: '15',
-    customRequirements: ''
+    role: "",
+    level: "",
+    type: "",
+    duration: "15",
+    customRequirements: "",
   });
 
   useEffect(() => {
     if (!loading && !user) {
       setIsRedirecting(true);
-      router.push('/login?redirectTo=/setup-interview');
+      router.push("/login?redirectTo=/setup-interview");
     }
   }, [user, loading, router]);
 
   const handleConfigChange = (field: string, value: string) => {
-    setInterviewConfig(prev => ({
+    setInterviewConfig((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
+
+    // Calculate required credits when duration changes
+    if (field === "duration") {
+      const duration = parseInt(value);
+      const credits = Math.max(5, Math.min(50, Math.ceil(duration / 3)));
+      setRequiredCredits(credits);
+    }
   };
 
   const canProceedToNext = () => {
@@ -107,50 +160,50 @@ export default function SetupInterviewPage() {
       case 3:
         return true; // Equipment test step
       case 4:
-        return equipmentStatus.microphone && equipmentStatus.camera && equipmentStatus.internet;
+        return (
+          equipmentStatus.microphone &&
+          equipmentStatus.camera &&
+          equipmentStatus.internet
+        );
       default:
         return false;
     }
   };
 
-  const handleStartInterview = () => {
-    // Store interview configuration in sessionStorage for the live interview
-    sessionStorage.setItem('interviewConfig', JSON.stringify(interviewConfig));
-    router.push('/interview/live');
-  };
+  // Only realtime interview is supported now
 
   const handleStartRealtimeInterview = () => {
     // Store interview configuration in sessionStorage for the realtime interview
-    sessionStorage.setItem('interviewConfig', JSON.stringify(interviewConfig));
-    router.push('/interview/realtime');
+    sessionStorage.setItem("interviewConfig", JSON.stringify(interviewConfig));
+    router.push("/interview/realtime");
   };
 
   const testMicrophone = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setEquipmentStatus(prev => ({ ...prev, microphone: true }));
-      stream.getTracks().forEach(track => track.stop());
+      setEquipmentStatus((prev) => ({ ...prev, microphone: true }));
+      stream.getTracks().forEach((track) => track.stop());
     } catch (error) {
-      setEquipmentStatus(prev => ({ ...prev, microphone: false }));
+      setEquipmentStatus((prev) => ({ ...prev, microphone: false }));
     }
   };
 
   const testCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setEquipmentStatus(prev => ({ ...prev, camera: true }));
-      stream.getTracks().forEach(track => track.stop());
+      setEquipmentStatus((prev) => ({ ...prev, camera: true }));
+      stream.getTracks().forEach((track) => track.stop());
     } catch (error) {
-      setEquipmentStatus(prev => ({ ...prev, camera: false }));
+      setEquipmentStatus((prev) => ({ ...prev, camera: false }));
     }
   };
 
   const testInternet = async () => {
     try {
-      const response = await fetch('/api/ping', { method: 'GET' });
-      setEquipmentStatus(prev => ({ ...prev, internet: response.ok }));
+      const response = await fetch("/api/ping", { method: "GET" });
+      setEquipmentStatus((prev) => ({ ...prev, internet: response.ok }));
     } catch (error) {
-      setEquipmentStatus(prev => ({ ...prev, internet: false }));
+      setEquipmentStatus((prev) => ({ ...prev, internet: false }));
     }
   };
 
@@ -160,7 +213,9 @@ export default function SetupInterviewPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600">
-            {isRedirecting ? 'Redirecting to login...' : 'Loading interview setup...'}
+            {isRedirecting
+              ? "Redirecting to login..."
+              : "Loading interview setup..."}
           </p>
         </div>
       </div>
@@ -178,18 +233,23 @@ export default function SetupInterviewPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <Link href="/dashboard" className="flex items-center space-x-2 text-slate-600 hover:text-slate-900">
+              <Link
+                href="/dashboard"
+                className="flex items-center space-x-2 text-slate-600 hover:text-slate-900"
+              >
                 <ArrowLeft className="w-5 h-5" />
                 <span>Back to Dashboard</span>
               </Link>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                   <Mic className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-slate-700">Interview Setup</span>
+                <span className="text-sm font-medium text-slate-700">
+                  Interview Setup
+                </span>
               </div>
             </div>
           </div>
@@ -203,17 +263,25 @@ export default function SetupInterviewPage() {
           <div className="flex items-center justify-between">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                  currentStep >= step 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {currentStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                    currentStep >= step
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {currentStep > step ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    step
+                  )}
                 </div>
                 {step < 3 && (
-                  <div className={`w-16 h-1 mx-2 ${
-                    currentStep > step ? 'bg-blue-600' : 'bg-slate-200'
-                  }`} />
+                  <div
+                    className={`w-16 h-1 mx-2 ${
+                      currentStep > step ? "bg-blue-600" : "bg-slate-200"
+                    }`}
+                  />
                 )}
               </div>
             ))}
@@ -229,49 +297,62 @@ export default function SetupInterviewPage() {
         {currentStep === 1 && (
           <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
             <CardHeader>
-              <CardTitle className="text-2xl text-slate-900">Select Your Role & Experience Level</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">
+                Select Your Role & Experience Level
+              </CardTitle>
               <CardDescription className="text-slate-600">
-                Choose your job role and experience level to customize your interview experience
+                Choose your job role and experience level to customize your
+                interview experience
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <Label className="text-lg font-medium text-slate-900">Job Role</Label>
+                <Label className="text-lg font-medium text-slate-900">
+                  Job Role
+                </Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {jobRoles.map((role) => (
                     <button
                       key={role.value}
-                      onClick={() => handleConfigChange('role', role.value)}
+                      onClick={() => handleConfigChange("role", role.value)}
                       className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                         interviewConfig.role === role.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
                       <div className="text-2xl mb-2">{role.icon}</div>
-                      <div className="font-medium text-slate-900">{role.label}</div>
+                      <div className="font-medium text-slate-900">
+                        {role.label}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <Label className="text-lg font-medium text-slate-900">Experience Level</Label>
+                <Label className="text-lg font-medium text-slate-900">
+                  Experience Level
+                </Label>
                 <div className="space-y-3">
                   {experienceLevels.map((level) => (
                     <button
                       key={level.value}
-                      onClick={() => handleConfigChange('level', level.value)}
+                      onClick={() => handleConfigChange("level", level.value)}
                       className={`w-full p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                         interviewConfig.level === level.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-slate-900">{level.label}</div>
-                          <div className="text-sm text-slate-600">{level.description}</div>
+                          <div className="font-medium text-slate-900">
+                            {level.label}
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            {level.description}
+                          </div>
                         </div>
                         {interviewConfig.level === level.value && (
                           <CheckCircle className="w-5 h-5 text-blue-600" />
@@ -299,51 +380,34 @@ export default function SetupInterviewPage() {
         {currentStep === 2 && (
           <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
             <CardHeader>
-              <CardTitle className="text-2xl text-slate-900">Choose Interview Type & Duration</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">
+                Choose Interview Type & Duration
+              </CardTitle>
               <CardDescription className="text-slate-600">
                 Select the type of interview and how long you'd like it to last
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <Label className="text-lg font-medium text-slate-900">Interview Type</Label>
+                <Label className="text-lg font-medium text-slate-900">
+                  Interview Type
+                </Label>
                 <div className="grid md:grid-cols-2 gap-4">
                   {interviewTypes.map((type) => (
                     <button
                       key={type.value}
-                      onClick={() => handleConfigChange('type', type.value)}
+                      onClick={() => handleConfigChange("type", type.value)}
                       className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
                         interviewConfig.type === type.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
-                      <div className="font-medium text-slate-900 mb-1">{type.label}</div>
-                      <div className="text-sm text-slate-600">{type.description}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label className="text-lg font-medium text-slate-900">Interview Duration</Label>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {interviewDurations.map((duration) => (
-                    <button
-                      key={duration.value}
-                      onClick={() => handleConfigChange('duration', duration.value)}
-                      className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                        interviewConfig.duration === duration.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Clock className="w-5 h-5 text-slate-600" />
-                        <div>
-                          <div className="font-medium text-slate-900">{duration.label}</div>
-                          <div className="text-sm text-slate-600">{duration.description}</div>
-                        </div>
+                      <div className="font-medium text-slate-900 mb-1">
+                        {type.label}
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        {type.description}
                       </div>
                     </button>
                   ))}
@@ -351,14 +415,58 @@ export default function SetupInterviewPage() {
               </div>
 
               <div className="space-y-4">
-                <Label htmlFor="customRequirements" className="text-lg font-medium text-slate-900">
+                <Label className="text-lg font-medium text-slate-900">
+                  Interview Duration
+                </Label>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {interviewDurations.map((duration) => (
+                    <button
+                      key={duration.value}
+                      onClick={() =>
+                        handleConfigChange("duration", duration.value)
+                      }
+                      className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                        interviewConfig.duration === duration.value
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Clock className="w-5 h-5 text-slate-600" />
+                        <div>
+                          <div className="font-medium text-slate-900">
+                            {duration.label}
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            {duration.description}
+                          </div>
+                        </div>
+                      </div>
+                      {interviewConfig.duration === duration.value &&
+                        requiredCredits && (
+                          <div className="mt-2 text-xs text-blue-600">
+                            Requires {requiredCredits} credits
+                          </div>
+                        )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label
+                  htmlFor="customRequirements"
+                  className="text-lg font-medium text-slate-900"
+                >
                   Custom Requirements (Optional)
                 </Label>
                 <Input
                   id="customRequirements"
                   placeholder="Any specific topics or skills you'd like to focus on..."
                   value={interviewConfig.customRequirements}
-                  onChange={(e) => handleConfigChange('customRequirements', e.target.value)}
+                  onChange={(e) =>
+                    handleConfigChange("customRequirements", e.target.value)
+                  }
                   className="border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -387,9 +495,12 @@ export default function SetupInterviewPage() {
         {currentStep === 3 && (
           <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
             <CardHeader>
-              <CardTitle className="text-2xl text-slate-900">Test Your Equipment</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">
+                Test Your Equipment
+              </CardTitle>
               <CardDescription className="text-slate-600">
-                Ensure your microphone, camera, and internet connection are working properly
+                Ensure your microphone, camera, and internet connection are
+                working properly
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -399,7 +510,9 @@ export default function SetupInterviewPage() {
                   <div className="p-4 border-2 border-slate-200 rounded-lg">
                     <div className="flex items-center space-x-3 mb-3">
                       <Headphones className="w-6 h-6 text-slate-600" />
-                      <span className="font-medium text-slate-900">Microphone</span>
+                      <span className="font-medium text-slate-900">
+                        Microphone
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 mb-3">
                       {equipmentStatus.microphone ? (
@@ -408,7 +521,9 @@ export default function SetupInterviewPage() {
                         <AlertCircle className="w-5 h-5 text-red-600" />
                       )}
                       <span className="text-sm text-slate-600">
-                        {equipmentStatus.microphone ? 'Working' : 'Not detected'}
+                        {equipmentStatus.microphone
+                          ? "Working"
+                          : "Not detected"}
                       </span>
                     </div>
                     <Button
@@ -434,7 +549,7 @@ export default function SetupInterviewPage() {
                         <AlertCircle className="w-5 h-5 text-red-600" />
                       )}
                       <span className="text-sm text-slate-600">
-                        {equipmentStatus.camera ? 'Working' : 'Not detected'}
+                        {equipmentStatus.camera ? "Working" : "Not detected"}
                       </span>
                     </div>
                     <Button
@@ -451,7 +566,9 @@ export default function SetupInterviewPage() {
                   <div className="p-4 border-2 border-slate-200 rounded-lg">
                     <div className="flex items-center space-x-3 mb-3">
                       <Wifi className="w-6 h-6 text-slate-600" />
-                      <span className="font-medium text-slate-900">Internet</span>
+                      <span className="font-medium text-slate-900">
+                        Internet
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 mb-3">
                       {equipmentStatus.internet ? (
@@ -460,7 +577,9 @@ export default function SetupInterviewPage() {
                         <AlertCircle className="w-5 h-5 text-red-600" />
                       )}
                       <span className="text-sm text-slate-600">
-                        {equipmentStatus.internet ? 'Connected' : 'No connection'}
+                        {equipmentStatus.internet
+                          ? "Connected"
+                          : "No connection"}
                       </span>
                     </div>
                     <Button
@@ -479,7 +598,9 @@ export default function SetupInterviewPage() {
                 <div className="flex items-start space-x-3">
                   <Zap className="w-5 h-5 text-blue-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-900 mb-1">Interview Tips</h4>
+                    <h4 className="font-medium text-blue-900 mb-1">
+                      Interview Tips
+                    </h4>
                     <ul className="text-sm text-blue-800 space-y-1">
                       <li>• Find a quiet environment with good lighting</li>
                       <li>• Test your equipment before starting</li>
@@ -491,38 +612,37 @@ export default function SetupInterviewPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="border-2 border-slate-200 hover:border-blue-300 transition-colors">
-                    <CardContent className="p-6">
-                      <div className="text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Mic className="w-6 h-6 text-white" />
-                        </div>
-                        <h3 className="font-semibold text-slate-900 mb-2">Standard Interview</h3>
-                        <p className="text-sm text-slate-600 mb-4">
-                          Traditional interview with speech recognition and synthesis
-                        </p>
-                        <Button
-                          onClick={handleStartInterview}
-                          disabled={!canProceedToNext()}
-                          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                        >
-                          Start Standard Interview
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* Credit Information */}
+                <div className="flex justify-center mb-4">
+                  <CreditDisplay
+                    className="max-w-md"
+                    showPurchaseButton={true}
+                    onPurchaseClick={() => setShowPurchaseModal(true)}
+                  />
+                </div>
 
-                  <Card className="border-2 border-slate-200 hover:border-green-300 transition-colors">
+                <div className="flex justify-center">
+                  <Card className="border-2 border-slate-200 hover:border-green-300 transition-colors max-w-md">
                     <CardContent className="p-6">
                       <div className="text-center">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Brain className="w-6 h-6 text-white" />
                         </div>
-                        <h3 className="font-semibold text-slate-900 mb-2">Real-time Conversation</h3>
+                        <h3 className="font-semibold text-slate-900 mb-2">
+                          Real-time Conversation
+                        </h3>
                         <p className="text-sm text-slate-600 mb-4">
-                          Advanced AI-powered real-time speech-to-speech conversation
+                          Advanced AI-powered real-time speech-to-speech
+                          conversation
                         </p>
+                        {requiredCredits && (
+                          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              This interview will cost{" "}
+                              <strong>{requiredCredits} credits</strong>
+                            </p>
+                          </div>
+                        )}
                         <Button
                           onClick={handleStartRealtimeInterview}
                           disabled={!canProceedToNext()}
@@ -549,6 +669,16 @@ export default function SetupInterviewPage() {
           </Card>
         )}
       </main>
+
+      {/* Credit Purchase Modal */}
+      <CreditPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        onPurchaseSuccess={() => {
+          // Refresh the page to update credit display
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

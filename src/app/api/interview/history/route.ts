@@ -24,9 +24,6 @@ export async function GET(request: NextRequest) {
     // Format: "Bearer {user_id}"
     const userId = authHeader.replace('Bearer ', '');
     
-    console.log('History API - User ID:', userId);
-    console.log('History API - Auth Header:', authHeader);
-    
     if (!userId) {
       return NextResponse.json(
         { error: 'Invalid authorization header' },
@@ -62,8 +59,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('History API - Found interviews:', interviews?.length || 0);
-    console.log('History API - Sample interview:', interviews?.[0]);
+
 
     // Transform the data to match the expected format
     const transformedInterviews = interviews?.map(interview => ({

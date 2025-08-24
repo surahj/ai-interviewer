@@ -25,7 +25,8 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "node scripts/setup-db.js",
+    "test:stripe": "node scripts/test-stripe.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateInterviewQuestion, InterviewContext } from '@/lib/openai';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client with service role key
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface QuestionRequest {
   context: InterviewContext & {
@@ -8,30 +14,33 @@ interface QuestionRequest {
   };
   userResponse?: string;
   isFirstQuestion: boolean;
+  interviewId?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: QuestionRequest = await request.json();
-    const { context, userResponse, isFirstQuestion } = body;
+    // Get user from request headers
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'Authorization header required' },
+        { status: 401 }
+      );
+    }
 
-    console.log('=== GENERATE QUESTION API CALL ===');
-    console.log('Context:', {
-      role: context.role,
-      level: context.level,
-      type: context.type,
-      currentQuestionNumber: context.currentQuestionNumber,
-      totalQuestions: context.totalQuestions,
-      conversationHistoryLength: context.conversationHistory?.length || 0,
-      customRequirements: context.customRequirements
-    });
-    console.log('User Response:', userResponse);
-    console.log('Is First Question:', isFirstQuestion);
+    const userId = authHeader.replace('Bearer ', '');
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid authorization header' },
+        { status: 401 }
+      );
+    }
+
+    const body: QuestionRequest = await request.json();
+    const { context, userResponse, isFirstQuestion, interviewId } = body;
 
     // Validate request
     if (!context || !context.role) {
-      console.log('=== VALIDATION ERROR ===');
-      console.log('Missing context or role in request');
       return NextResponse.json(
         { error: 'Invalid request: missing context or role' },
         { status: 400 }
@@ -42,25 +51,19 @@ export async function POST(request: NextRequest) {
     let question: string;
     
     if (isFirstQuestion) {
-      console.log('Generating first question with OpenAI...');
-      question = await generateInterviewQuestion(context, undefined, true);
+      question = await generateInterviewQuestion(context, undefined, true, userId, interviewId);
     } else {
-      console.log('Generating follow-up question with OpenAI...');
-      
       // If we need to avoid similar questions, add that context
       if (context.avoidSimilar && context.previousQuestions) {
-        console.log('Avoiding similar questions. Previous questions:', context.previousQuestions.length);
         const enhancedContext = {
           ...context,
           avoidSimilarQuestions: context.previousQuestions
         };
-        question = await generateInterviewQuestion(enhancedContext, userResponse, false);
+        question = await generateInterviewQuestion(enhancedContext, userResponse, false, userId, interviewId);
       } else {
-        question = await generateInterviewQuestion(context, userResponse, false);
+        question = await generateInterviewQuestion(context, userResponse, false, userId, interviewId);
       }
     }
-
-    console.log('OpenAI Generated Question:', question);
 
     const response = {
       question: question,
@@ -68,10 +71,7 @@ export async function POST(request: NextRequest) {
       difficulty: context.level || 'mid-level'
     };
 
-    console.log('=== GENERATE QUESTION API RESPONSE ===');
-    console.log('Final Question:', question);
-    console.log('Response Object:', JSON.stringify(response, null, 2));
-    console.log('=== END GENERATE QUESTION API ===');
+
 
     return NextResponse.json(response);
 

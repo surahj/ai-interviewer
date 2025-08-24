@@ -9,6 +9,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
   },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Client-Info': 'supabase-js/2.0.0',
+    },
+  },
 });
 
 // Server-side Supabase client with service role key

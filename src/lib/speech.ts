@@ -127,7 +127,7 @@ export class SpeechRecognitionManager {
     };
 
     this.recognition.onnomatch = () => {
-      console.log('No speech detected');
+      // No speech detected
     };
   }
 
@@ -145,14 +145,12 @@ export class SpeechRecognitionManager {
 
   startListening() {
     if (this.isListening) {
-      console.log('Already listening');
       return;
     }
 
     try {
       this.recognition.start();
       this.isListening = true;
-      console.log('Started listening');
     } catch (error) {
       console.error('Error starting speech recognition:', error);
     }
@@ -160,14 +158,12 @@ export class SpeechRecognitionManager {
 
   stopListening() {
     if (!this.isListening) {
-      console.log('Not listening');
       return;
     }
 
     try {
       this.recognition.stop();
       this.isListening = false;
-      console.log('Stopped listening');
     } catch (error) {
       console.error('Error stopping speech recognition:', error);
     }
@@ -225,7 +221,6 @@ export class SpeechSynthesisManager {
       const voice = voices.find(v => v.name === voiceName);
       if (voice) {
         this.bestVoice = voice;
-        console.log('Selected preferred voice:', voice.name);
         return;
       }
     }
@@ -243,7 +238,6 @@ export class SpeechSynthesisManager {
     
     if (femaleVoice) {
       this.bestVoice = femaleVoice;
-      console.log('Selected female voice:', femaleVoice.name);
     } else {
       // Fallback to any non-default voice
       const naturalVoice = voices.find(voice => 
@@ -253,10 +247,8 @@ export class SpeechSynthesisManager {
       
       if (naturalVoice) {
         this.bestVoice = naturalVoice;
-        console.log('Selected fallback voice:', naturalVoice.name);
       } else if (voices.length > 0) {
         this.bestVoice = voices[0];
-        console.log('Selected default voice:', voices[0].name);
       }
     }
   }
@@ -291,13 +283,11 @@ export class SpeechSynthesisManager {
     // Use the best voice we selected during initialization
     if (this.bestVoice) {
       utterance.voice = this.bestVoice;
-      console.log('Using best voice:', this.bestVoice.name);
     } else {
       // Fallback to voice selection if best voice not set
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
         utterance.voice = voices[0];
-        console.log('Using fallback voice:', voices[0].name);
       }
     }
 
@@ -556,7 +546,6 @@ export class AudioRecordingManager {
       };
       
       this.mediaRecorder.start(100); // Collect data every 100ms
-      console.log('Audio recording started');
     } catch (error) {
       console.error('Error starting audio recording:', error);
       throw error;
@@ -573,7 +562,6 @@ export class AudioRecordingManager {
       this.mediaRecorder.onstop = () => {
         this.isRecording = false;
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        console.log('Audio recording stopped, blob size:', audioBlob.size);
         resolve(audioBlob);
       };
 

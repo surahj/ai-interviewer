@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { CreditsService } from '@/lib/credits-service';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -129,18 +130,10 @@ function calculateTotalQuestions(duration: string): number {
 // Create OpenAI Realtime session with fallback
 async function createOpenAIRealtimeSession(systemPrompt: string, body: any): Promise<any | null> {
   try {
-    console.log('=== ATTEMPTING OPENAI REALTIME SESSION CREATION ===');
-    
     // Check if OpenAI API key is available
     if (!process.env.OPENAI_API_KEY) {
-      console.log('OpenAI API key not found, skipping Realtime session creation');
       return null;
     }
-
-    console.log('Making request to OpenAI Realtime API...');
-    console.log('API Key present:', !!process.env.OPENAI_API_KEY);
-    console.log('API Key length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('System prompt length:', systemPrompt.length);
     
     // Use a simplified system prompt for testing
     const simplifiedPrompt = `You are an expert technical interviewer conducting a ${body.type} interview for a ${body.level} ${body.role} position. Be conversational and professional.`;
@@ -160,8 +153,6 @@ async function createOpenAIRealtimeSession(systemPrompt: string, body: any): Pro
       }
     };
     
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
       headers: {
@@ -171,32 +162,24 @@ async function createOpenAIRealtimeSession(systemPrompt: string, body: any): Pro
       body: JSON.stringify(requestBody),
     });
 
-    console.log('OpenAI API Response Status:', response.status);
-    console.log('OpenAI API Response Headers:', Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI Realtime API error:', response.status, errorText);
       
       // If it's a 401 or 403, it might be API key or access issues
       if (response.status === 401 || response.status === 403) {
-        console.log('OpenAI API authentication failed - Realtime API access may not be available');
         return null;
       }
       
       // If it's a 404, the endpoint might not exist yet
       if (response.status === 404) {
-        console.log('OpenAI Realtime API endpoint not found - API may not be available yet');
         return null;
       }
       
       throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
     }
 
-    console.log('OpenAI API response was successful, parsing JSON...');
-
     const sessionData = await response.json();
-    console.log('OpenAI Realtime session created successfully:', sessionData);
     return sessionData;
   } catch (error) {
     console.error('Error creating OpenAI Realtime session:', error);
@@ -217,14 +200,38 @@ export async function POST(request: NextRequest) {
     const body: SessionRequest = await request.json();
     const { role, level, name, type = 'mixed', duration = '15', customRequirements } = body;
 
-    console.log('=== CREATE INTERVIEW SESSION ===');
-    console.log('Request body:', JSON.stringify(body, null, 2));
-
     // Validate required fields
     if (!role || !level) {
       return NextResponse.json(
         { error: 'Role and level are required' },
         { status: 400 }
+      );
+    }
+
+    // Get the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Calculate required credits for this interview
+    const requiredCredits = await CreditsService.calculateInterviewCredits(parseInt(duration));
+    
+    // Check if user has enough credits
+    const hasEnoughCredits = await CreditsService.checkUserCredits(user.id, requiredCredits);
+    
+    if (!hasEnoughCredits) {
+      return NextResponse.json(
+        { 
+          error: 'Insufficient credits',
+          requiredCredits,
+          message: `This interview requires ${requiredCredits} credits. Please purchase more credits to continue.`
+        },
+        { status: 402 } // Payment Required
       );
     }
 
@@ -238,22 +245,14 @@ export async function POST(request: NextRequest) {
     const sessionId = crypto.randomUUID();
 
     // Try to create OpenAI Realtime session (with fallback)
-    console.log('Attempting to create OpenAI Realtime session...');
     const realtimeSession = await createOpenAIRealtimeSession(systemPrompt, body);
-    
-    if (realtimeSession) {
-      console.log('OpenAI Realtime session created successfully');
-      console.log('Realtime Session ID:', realtimeSession.id);
-      console.log('Realtime Session Client Secret:', realtimeSession.client_secret ? 'Present' : 'Missing');
-    } else {
-      console.log('OpenAI Realtime session creation failed, using fallback mode');
-    }
 
     // Create interview record in database
     const { data: interview, error: interviewError } = await supabase
       .from('interviews')
       .insert({
         id: sessionId,
+        user_id: user.id,
         role,
         level,
         candidate_name: name,
@@ -278,7 +277,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Interview record created in database:', interview);
+    // Deduct credits for the interview
+    const creditsDeducted = await CreditsService.deductInterviewCredits(
+      user.id, 
+      sessionId, 
+      parseInt(duration)
+    );
+
+    if (!creditsDeducted) {
+      // If credit deduction failed, delete the interview record
+      await supabase.from('interviews').delete().eq('id', sessionId);
+      return NextResponse.json(
+        { error: 'Failed to deduct credits for interview' },
+        { status: 500 }
+      );
+    }
+
+
 
     const response: SessionResponse = {
       sessionId,
@@ -304,11 +319,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    console.log('=== SESSION CREATED ===');
-    console.log('Session ID:', sessionId);
-    console.log('Realtime Session Available:', !!realtimeSession);
-    console.log('System Prompt Length:', systemPrompt.length);
-    console.log('Total Questions:', totalQuestions);
+
 
     return NextResponse.json(response);
 

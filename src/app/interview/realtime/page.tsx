@@ -10,18 +10,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX,
-  Phone,
   PhoneOff,
   Clock,
   AlertCircle,
   CheckCircle,
   X,
   Brain,
-  MessageCircle,
+  Volume2,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
@@ -105,8 +102,6 @@ export default function RealtimeInterviewPage() {
 
     const initializeInterview = async () => {
       try {
-        console.log("Initializing real-time interview...");
-
         // Check realtime support
         if (!checkRealtimeSupport()) {
           toast.error(
@@ -120,7 +115,6 @@ export default function RealtimeInterviewPage() {
         setMicrophoneStatus("checking");
         const microphoneTest = await testMicrophone();
         if (!microphoneTest.success) {
-          console.log("Microphone test failed:", microphoneTest.error);
           setMicrophoneStatus("unavailable");
           setMicrophoneError(microphoneTest.error || "Unknown error");
 
@@ -146,8 +140,19 @@ export default function RealtimeInterviewPage() {
           sessionData.session
         );
 
+        // Add initial AI greeting to start the conversation
+        const initialGreeting = {
+          role: "assistant" as const,
+          content: `Hello! Welcome to your ${sessionData.interviewConfig.type} interview for a ${sessionData.interviewConfig.level} ${sessionData.interviewConfig.role} position. I'm excited to learn more about you and your experience. Could you tell me a bit about yourself and your background?`,
+          timestamp: new Date(),
+        };
+
+        setInterviewState((prev) => ({
+          ...prev,
+          conversationHistory: [initialGreeting],
+        }));
+
         setIsInitialized(true);
-        console.log("Real-time interview initialized");
       } catch (error) {
         console.error("Error initializing interview:", error);
 
@@ -164,9 +169,7 @@ export default function RealtimeInterviewPage() {
             "Failed to create real-time session. Please check your OpenAI API access."
           );
         } else {
-          toast.error(
-            "Failed to initialize real-time interview. Please try again."
-          );
+          // Error initializing interview
         }
 
         // Reset the ref on error so user can retry
@@ -207,7 +210,6 @@ export default function RealtimeInterviewPage() {
   const createRealtimeSession = async () => {
     // Prevent duplicate session creation
     if (sessionCreationRef.current) {
-      console.log("Session creation already in progress, skipping...");
       return;
     }
 
@@ -225,13 +227,12 @@ export default function RealtimeInterviewPage() {
             customRequirements: "",
           };
 
-      console.log("Creating realtime session with config:", interviewConfig);
-
       // Create realtime session
       const response = await fetch("/api/interview/realtime-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.id}`,
         },
         body: JSON.stringify(interviewConfig),
       });
@@ -244,7 +245,6 @@ export default function RealtimeInterviewPage() {
           ...prev,
           interviewConfig: sessionData.interviewConfig,
         }));
-        console.log("Realtime session created:", sessionData.sessionId);
         return sessionData;
       } else {
         const errorText = await response.text();
@@ -280,9 +280,6 @@ export default function RealtimeInterviewPage() {
     session: any
   ) => {
     try {
-      console.log("Initializing realtime connection...");
-      console.log("Using session ID:", sessionId);
-
       if (!sessionId || !session) {
         throw new Error("No session ID or session data available");
       }
@@ -291,48 +288,37 @@ export default function RealtimeInterviewPage() {
       realtimeManagerRef.current = new RealtimeConversationManager({
         session: session,
         onTranscriptReceived: (transcript, isFinal) => {
-          console.log("AI transcript received:", transcript, isFinal);
           if (isFinal && transcript.trim()) {
+            // Update UI with the conversation history from the manager
+            const history =
+              realtimeManagerRef.current?.getConversationHistory() || [];
             setInterviewState((prev) => ({
               ...prev,
-              conversationHistory: [
-                ...prev.conversationHistory,
-                {
-                  role: "assistant",
-                  content: transcript,
-                  timestamp: new Date(),
-                },
-              ],
+              conversationHistory: history,
               isSpeaking: false,
             }));
           }
         },
         onUserSpeech: (transcript, isFinal) => {
-          console.log("User speech received:", transcript, isFinal);
           if (isFinal && transcript.trim()) {
-            // Add user speech to conversation history
+            // Update UI with the conversation history from the manager
+            const history =
+              realtimeManagerRef.current?.getConversationHistory() || [];
             setInterviewState((prev) => ({
               ...prev,
-              conversationHistory: [
-                ...prev.conversationHistory,
-                { role: "user", content: transcript, timestamp: new Date() },
-              ],
+              conversationHistory: history,
             }));
-
-            // Generate AI response based on user input
-            generateAIResponse(transcript);
           }
         },
         onError: (error) => {
           console.error("Realtime error:", error);
-          toast.error(`Connection error: ${error}`);
+          // toast.error(`Connection error: ${error}`);
           setInterviewState((prev) => ({
             ...prev,
             connectionState: "failed",
           }));
         },
         onConnectionStateChange: (state) => {
-          console.log("Connection state changed:", state);
           setInterviewState((prev) => ({
             ...prev,
             connectionState: state,
@@ -344,7 +330,6 @@ export default function RealtimeInterviewPage() {
       // Connect to OpenAI Realtime
       await realtimeManagerRef.current.connect();
 
-      console.log("Realtime connection established");
       setInterviewState((prev) => ({
         ...prev,
         isConnected: true,
@@ -365,65 +350,13 @@ export default function RealtimeInterviewPage() {
     }
   };
 
-  const generateAIResponse = async (userInput: string) => {
-    try {
-      console.log("Generating AI response to:", userInput);
-
-      // Call the generate question API to get AI response
-      const response = await fetch("/api/interview/generate-question", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userResponse: userInput,
-          context: {
-            role: interviewState.interviewConfig?.role || "Software Engineer",
-            level: interviewState.interviewConfig?.level || "Mid-level",
-            type: interviewState.interviewConfig?.type || "Technical",
-            conversationHistory: interviewState.conversationHistory,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate AI response");
-      }
-
-      const data = await response.json();
-      const aiResponse =
-        data.question || "Thank you for your response. Please continue.";
-
-      console.log("AI response generated:", aiResponse);
-
-      // Speak the AI response
-      if (realtimeManagerRef.current) {
-        // Add the response to conversation history
-        setInterviewState((prev) => ({
-          ...prev,
-          conversationHistory: [
-            ...prev.conversationHistory,
-            { role: "assistant", content: aiResponse, timestamp: new Date() },
-          ],
-        }));
-
-        // Speak the AI response using speech synthesis
-        realtimeManagerRef.current.speakAIResponse(aiResponse);
-      }
-    } catch (error) {
-      console.error("Error generating AI response:", error);
-      toast.error("Failed to generate AI response");
-    }
-  };
+  // OpenAI Realtime handles AI responses automatically through the WebRTC connection
 
   const endInterview = async () => {
     try {
-      console.log("Ending real-time interview...");
-
       // Disconnect realtime connection
       if (realtimeManagerRef.current) {
         await realtimeManagerRef.current.disconnect();
-        console.log("Disconnected realtime connection");
       }
 
       // Reset state
@@ -433,38 +366,68 @@ export default function RealtimeInterviewPage() {
         connectionState: "disconnected",
       }));
 
+      // Get conversation history from the manager
+      let conversationHistory =
+        realtimeManagerRef.current?.getConversationHistory() || [];
+
+      // If no conversation history, try building from raw messages
+      if (conversationHistory.length === 0) {
+        conversationHistory =
+          realtimeManagerRef.current?.buildConversationFromRawMessages() || [];
+      }
+
+      // If still no conversation history, use UI state as final fallback
+      if (conversationHistory.length === 0) {
+        conversationHistory = interviewState.conversationHistory;
+      }
+
       // Generate feedback if we have conversation history
-      if (sessionId && interviewState.conversationHistory.length > 0) {
-        console.log("Generating interview feedback...");
+      if (sessionId && conversationHistory.length > 0) {
+        // Get the actual interview configuration from sessionStorage
+        const storedConfig = sessionStorage.getItem("interviewConfig");
+        const actualConfig = storedConfig
+          ? JSON.parse(storedConfig)
+          : {
+              role: "software-engineer",
+              level: "mid-level",
+              type: "mixed",
+              customRequirements: "",
+            };
 
-        const feedbackResponse = await fetch("/api/interview/feedback", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionId,
-            transcript: interviewState.conversationHistory.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp.toISOString(),
-            })),
-            role: sessionConfig?.role || "software-engineer",
-            level: sessionConfig?.level || "mid-level",
-            type: sessionConfig?.type || "mixed",
-            customRequirements: sessionConfig?.customRequirements,
-            userId: user?.id, // Include user ID for database filtering
-          }),
-        });
+        const requestBody = {
+          sessionId,
+          transcript: conversationHistory.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp.toISOString(),
+          })),
+          role: actualConfig.role,
+          level: actualConfig.level,
+          type: actualConfig.type,
+          customRequirements: actualConfig.customRequirements,
+          userId: user?.id,
+          duration: 900 - interviewState.timeRemaining, // Calculate actual duration
+        };
 
-        if (feedbackResponse.ok) {
-          const feedbackData = await feedbackResponse.json();
-          console.log("Feedback generated successfully");
-          // Use the database ID returned from the feedback API
-          const databaseSessionId = feedbackData.sessionId;
-          router.push(`/interview/summary?sessionId=${databaseSessionId}`);
+        const completionResponse = await fetch(
+          "/api/interview/complete-realtime",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${user?.id}`,
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (completionResponse.ok) {
+          const completionData = await completionResponse.json();
+          // Use the database ID returned from the completion API
+          const interviewId = completionData.interviewId;
+          router.push(`/interview/summary/${interviewId}`);
         } else {
-          console.error("Failed to generate feedback");
+          const errorData = await completionResponse.json();
           router.push("/dashboard");
         }
       } else {
@@ -660,83 +623,40 @@ export default function RealtimeInterviewPage() {
                   <span className="text-yellow-400 text-sm">Connecting...</span>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
 
-        {/* Sidebar */}
-        <div className="w-96 bg-slate-800 border-l border-slate-700 flex flex-col">
-          {/* Conversation History */}
-          <div className="flex-1 p-6 overflow-y-auto">
-            <Card className="border-slate-700 bg-slate-700/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-white">
-                  Conversation
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Real-time speech-to-speech conversation
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {interviewState.conversationHistory.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={`text-sm ${
-                        msg.role === "user" ? "text-blue-300" : "text-green-300"
-                      }`}
-                    >
-                      <div className="font-medium">
-                        {msg.role === "user" ? "You" : "AI"}:
-                      </div>
-                      <div className="mt-1 text-slate-300">
-                        {msg.content.length > 100
-                          ? `${msg.content.substring(0, 100)}...`
-                          : msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  {interviewState.conversationHistory.length === 0 && (
-                    <div className="text-sm text-slate-400 text-center py-4">
-                      Start speaking to begin the conversation...
-                    </div>
-                  )}
+              {/* Controls */}
+              {interviewState.isConnected && (
+                <div className="mt-8 flex items-center justify-center space-x-4">
+                  <Button
+                    variant={interviewState.isMuted ? "destructive" : "outline"}
+                    size="lg"
+                    onClick={toggleMute}
+                    className={`border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white ${
+                      interviewState.isMuted
+                        ? "bg-red-600 hover:bg-red-700"
+                        : ""
+                    }`}
+                    disabled={!interviewState.isConnected}
+                  >
+                    {interviewState.isMuted ? (
+                      <MicOff className="w-5 h-5 mr-2" />
+                    ) : (
+                      <Mic className="w-5 h-5 mr-2" />
+                    )}
+                    {interviewState.isMuted ? "Unmute" : "Mute"}
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    size="lg"
+                    onClick={handleEndInterviewClick}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    <PhoneOff className="w-5 h-5 mr-2" />
+                    End Interview
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Controls */}
-          <div className="p-6 border-t border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">Controls</h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant={interviewState.isMuted ? "destructive" : "outline"}
-                size="sm"
-                onClick={toggleMute}
-                className="border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white"
-                disabled={!interviewState.isConnected}
-              >
-                {interviewState.isMuted ? (
-                  <MicOff className="w-4 h-4" />
-                ) : (
-                  <Mic className="w-4 h-4" />
-                )}
-                {interviewState.isMuted ? "Unmute" : "Mute"}
-              </Button>
-
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleEndInterviewClick}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <PhoneOff className="w-4 h-4" />
-                End
-              </Button>
+              )}
             </div>
           </div>
         </div>

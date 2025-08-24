@@ -1,19 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { CreditsService } from '@/lib/credits-service';
+
+// Initialize Supabase client with service role key
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user from request headers
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'Authorization header required' },
+        { status: 401 }
+      );
+    }
+
+    const userId = authHeader.replace('Bearer ', '');
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid authorization header' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { role, level, type, customRequirements } = body;
 
-    console.log('Creating OpenAI Realtime session...');
-    console.log('Request body:', { role, level, type, customRequirements });
-
     // Check if API key is available
     if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not set in environment variables');
+      console.error('OpenAI_API_KEY is not set in environment variables');
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },
         { status: 500 }
+      );
+    }
+
+    // Deduct credits before creating OpenAI Realtime session
+    const creditsDeducted = await CreditsService.deductOpenAICredits(userId, 'realtime-session', 100); // Estimate tokens for session creation
+    if (!creditsDeducted) {
+      return NextResponse.json(
+        { error: 'Insufficient credits to start interview. Please purchase more credits.' },
+        { status: 402 }
       );
     }
 
@@ -50,8 +80,6 @@ IMPORTANT:
 - Speak clearly and at a normal pace.`
     };
 
-    console.log('OpenAI API request body:', JSON.stringify(requestBody, null, 2));
-
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
       headers: {
@@ -60,9 +88,6 @@ IMPORTANT:
       },
       body: JSON.stringify(requestBody),
     });
-
-    console.log('OpenAI API response status:', response.status);
-    console.log('OpenAI API response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -80,7 +105,6 @@ IMPORTANT:
     }
 
     const data = await response.json();
-    console.log('OpenAI Realtime session created successfully:', data);
 
     return NextResponse.json({
       sessionId: data.id,

@@ -5,6 +5,7 @@ A modern, AI-powered interview practice platform built with Next.js, Supabase, a
 ## 🚀 Features
 
 ### 🎤 Real-time Voice Interviews
+
 - **OpenAI Realtime API Integration**: Natural voice conversations with AI interviewers
 - **WebRTC Audio Streaming**: Low-latency, high-quality audio communication
 - **Automatic Speech Processing**: OpenAI handles speech-to-text and text-to-speech
@@ -12,12 +13,14 @@ A modern, AI-powered interview practice platform built with Next.js, Supabase, a
 - **Dual Interview Modes**: Choose between standard speech recognition and real-time conversation
 
 ### 🎯 Smart Interview System
+
 - **Role-based Questions**: Tailored questions for different job roles and levels
 - **Adaptive Conversations**: AI adapts questions based on your responses
 - **Real-time Feedback**: Instant analysis and scoring of your answers
 - **Progress Tracking**: Monitor your improvement over time
 
 ### 🏗️ Modern Tech Stack
+
 - **Next.js 14**: React framework with App Router
 - **Supabase**: Backend-as-a-Service with PostgreSQL
 - **OpenAI Realtime API**: Advanced AI conversation capabilities
@@ -29,26 +32,32 @@ A modern, AI-powered interview practice platform built with Next.js, Supabase, a
 ### Interview Modes
 
 #### 1. Standard Interview Mode
+
 - Uses browser speech recognition and synthesis
 - Works on all modern browsers
 - Turn-based conversation with AI
 - Good for users with limited internet or older browsers
 
 #### 2. Real-time Conversation Mode
+
 - Uses OpenAI's Realtime API for natural conversation
 - Requires modern browser with WebRTC support
 - Sub-second response times with natural AI voice
 - Full conversation context and barge-in support
 
 ### 1. Session Creation
+
 When you start an interview, the system:
+
 - Creates an OpenAI Realtime session with your role and level (real-time mode)
 - Or initializes speech recognition (standard mode)
 - Generates a personalized interview persona
 - Establishes connection credentials
 
 ### 2. Real-time Conversation
+
 During the interview:
+
 - **Real-time Mode**: Your microphone audio streams to OpenAI via WebRTC
 - **Standard Mode**: Browser processes speech and sends text to AI
 - OpenAI processes speech-to-text, conversation logic, and text-to-speech
@@ -56,7 +65,9 @@ During the interview:
 - Natural conversation flow with barge-in support
 
 ### 3. Analysis & Feedback
+
 After the interview:
+
 - Complete transcript is saved to the database
 - AI analyzes your responses and provides detailed feedback
 - Performance metrics and improvement suggestions
@@ -65,6 +76,7 @@ After the interview:
 ## 🛠️ Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - OpenAI API key with Realtime API access
 - Supabase account (free tier works)
@@ -72,22 +84,26 @@ After the interview:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/ai-interviewer.git
    cd ai-interviewer
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp env.example .env.local
    ```
-   
+
    Update `.env.local` with your credentials:
+
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -96,15 +112,17 @@ After the interview:
    ```
 
 4. **Set up the database**
+
    ```bash
    # Start Supabase locally
    supabase start
-   
+
    # Apply migrations
    supabase db reset
    ```
 
 5. **Run the development server**
+
    ```bash
    npm run dev
    ```
@@ -140,6 +158,7 @@ ai-interviewer/
 ## 🎯 Supported Interview Types
 
 ### Job Roles
+
 - Software Engineer
 - Frontend Developer
 - Backend Developer
@@ -152,12 +171,14 @@ ai-interviewer/
 - Mobile Developer
 
 ### Experience Levels
+
 - Junior (0-2 years)
 - Mid-Level (3-5 years)
 - Senior (6-8 years)
 - Lead (8+ years)
 
 ### Interview Types
+
 - Technical Interviews
 - Behavioral Interviews
 - Mixed Interviews
@@ -166,22 +187,26 @@ ai-interviewer/
 ## 🔧 API Endpoints
 
 ### Interview Management
+
 - `POST /api/interview/session` - Create new interview session
 - `GET /api/interview/session` - Get session details
 - `POST /api/interview/feedback` - Generate interview feedback
 
 ### Question Generation
+
 - `POST /api/interview/generate-question` - Generate contextual questions
 - `POST /api/interview/analyze-response` - Analyze user responses
 
 ## 🧪 Testing
 
 Run the test suite:
+
 ```bash
 npm run test
 ```
 
 Run tests with UI:
+
 ```bash
 npm run test:ui
 ```
@@ -189,12 +214,15 @@ npm run test:ui
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+
 1. Connect your GitHub repository to Vercel
 2. Add environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
 ### Other Platforms
+
 The app can be deployed to any platform that supports Next.js:
+
 - Netlify
 - Railway
 - DigitalOcean App Platform
@@ -222,6 +250,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 If you have any questions or need help:
+
 - Open an issue on GitHub
 - Check the [documentation](LOCAL_SETUP.md)
 - Join our community discussions

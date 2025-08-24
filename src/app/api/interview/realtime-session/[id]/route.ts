@@ -7,8 +7,6 @@ export async function GET(
   try {
     const sessionId = params.id;
 
-    console.log('Getting session data for:', sessionId);
-
     // Get session data from OpenAI
     const response = await fetch(`https://api.openai.com/v1/realtime/sessions/${sessionId}`, {
       method: 'GET',
@@ -28,7 +26,6 @@ export async function GET(
     }
 
     const sessionData = await response.json();
-    console.log('Session data retrieved:', sessionData.id);
 
     return NextResponse.json({
       session: sessionData
