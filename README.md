@@ -19,6 +19,13 @@ A modern, AI-powered interview practice platform built with Next.js, Supabase, a
 - **Real-time Feedback**: Instant analysis and scoring of your answers
 - **Progress Tracking**: Monitor your improvement over time
 
+### 🔐 Authentication & User Management
+
+- **Email/Password Authentication**: Traditional sign-up and sign-in
+- **Google OAuth Integration**: One-click sign-in with Google accounts
+- **User Profiles**: Manage your personal information and preferences
+- **Session Management**: Secure, persistent login sessions
+
 ### 🏗️ Modern Tech Stack
 
 - **Next.js 14**: React framework with App Router
@@ -111,7 +118,24 @@ After the interview:
    OPENAI_API_KEY=your_openai_api_key
    ```
 
-4. **Set up the database**
+4. **Set up Google OAuth (Optional)**
+
+   To enable Google sign-in:
+
+   a. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   b. Create a new project or select an existing one
+   c. Enable the Google+ API
+   d. Go to "Credentials" and create an OAuth 2.0 Client ID
+   e. Add your domain to authorized origins (e.g., `http://localhost:3000` for development)
+   f. Add your redirect URI: `https://your-project.supabase.co/auth/v1/callback`
+   g. Copy the Client ID and Client Secret to your `.env.local`:
+
+   ```env
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=your_google_client_id
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=your_google_client_secret
+   ```
+
+5. **Set up the database**
 
    ```bash
    # Start Supabase locally
@@ -121,13 +145,13 @@ After the interview:
    supabase db reset
    ```
 
-5. **Run the development server**
+6. **Run the development server**
 
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
+7. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 📁 Project Structure

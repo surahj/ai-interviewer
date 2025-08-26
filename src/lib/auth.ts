@@ -78,6 +78,7 @@ export class AuthManager {
       });
 
       if (error) {
+        console.error('Sign in error:', error);
         throw error;
       }
 
@@ -107,6 +108,7 @@ export class AuthManager {
       });
 
       if (error) {
+        console.error('Sign up error:', error);
         throw error;
       }
 
@@ -119,21 +121,58 @@ export class AuthManager {
         this.currentUser = user;
         this.notifyListeners(user);
         
-        // Initialize credits for new user
+        // Initialize credits for new user (but don't fail signup if this fails)
         try {
           const { CreditsService } = await import('./credits-service');
           await CreditsService.initializeUserCredits(data.user.id);
+          console.log('User credits initialized successfully');
         } catch (creditError) {
           console.error('Failed to initialize user credits:', creditError);
           // Don't fail the signup if credit initialization fails
+          // The user can still use the app, they just won't have initial credits
         }
         
+        return user;
+      }
+
+      // Handle case where user is created but email confirmation is required
+      if (data.user && !data.session) {
+        console.log('User created successfully, email confirmation required');
+        // Return a temporary user object for the signup success case
+        const user: AuthUser = {
+          id: data.user.id,
+          email: data.user.email || '',
+          access_token: '', // No session token since email needs confirmation
+        };
         return user;
       }
 
       return null;
     } catch (error) {
       console.error('Sign up error:', error);
+      throw error;
+    }
+  }
+
+  async signInWithGoogle(): Promise<AuthUser | null> {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('Google sign in error:', error);
+        throw error;
+      }
+
+      // For OAuth, we need to wait for the redirect and callback
+      // The actual user data will be handled in the callback
+      return null;
+    } catch (error) {
+      console.error('Google sign in error:', error);
       throw error;
     }
   }
@@ -174,6 +213,8 @@ export class AuthManager {
   // Setup auth state change listener
   setupAuthListener(): void {
     supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email);
+      
       if (event === 'SIGNED_IN' && session?.user) {
         const user: AuthUser = {
           id: session.user.id,

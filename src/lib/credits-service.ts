@@ -66,15 +66,8 @@ export class CreditsService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // User doesn't have credits record yet, return default credits
-          return {
-            user_id: userId,
-            available_credits: 50,
-            total_credits_earned: 50,
-            total_credits_used: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
+          // User doesn't have credits record yet, return null
+          return null;
         }
         console.error('Error fetching user credits:', error);
         throw error;

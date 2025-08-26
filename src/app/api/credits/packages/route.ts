@@ -11,21 +11,18 @@ export async function GET(request: NextRequest) {
   try {
     // Get user from request headers (same pattern as other endpoints)
     const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    // Extract user ID from authorization header
-    const userId = authHeader.replace('Bearer ', '');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid authorization header' },
-        { status: 401 }
-      );
+    
+    // Allow public access for pricing page
+    let userId = null;
+    if (authHeader && authHeader !== 'Bearer public') {
+      userId = authHeader.replace('Bearer ', '');
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Invalid authorization header' },
+          { status: 401 }
+        );
+      }
     }
 
     // Get available credit packages

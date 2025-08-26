@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
       const credits = await CreditsService.getUserCredits(userId);
       
       if (!credits) {
-        // Return default credits for new users
+        // Return 0 credits for new users - they need to complete profile or purchase credits
         return NextResponse.json({
-          available_credits: 50,
-          total_credits_earned: 50,
+          available_credits: 0,
+          total_credits_earned: 0,
           total_credits_used: 0
         });
       }
@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       console.error('Error in getUserCredits:', error);
-      // Return default credits for new users
+      // Return 0 credits for new users
       return NextResponse.json({
-        available_credits: 50,
-        total_credits_earned: 50,
+        available_credits: 0,
+        total_credits_earned: 0,
         total_credits_used: 0
       });
     }

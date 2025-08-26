@@ -10,6 +10,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<AuthUser | null>;
   signUp: (email: string, password: string) => Promise<AuthUser | null>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   signIn: async () => null,
   signUp: async () => null,
+  signInWithGoogle: async () => {},
 });
 
 export const useAuth = () => {
@@ -101,6 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      await authManager.signInWithGoogle();
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
@@ -119,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     signIn,
     signUp,
+    signInWithGoogle,
   };
 
   return (

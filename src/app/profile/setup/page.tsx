@@ -25,6 +25,7 @@ import {
   X,
   Check,
   Sparkles,
+  Coins,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -308,6 +309,9 @@ export default function ProfileSetupPage() {
       // Initialize learning paths for selected skills
       await initializeLearningPaths();
 
+      // Initialize welcome credits for completing profile
+      await initializeWelcomeCredits();
+
       router.push("/dashboard");
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -333,6 +337,33 @@ export default function ProfileSetupPage() {
       // This can be implemented later with a separate API route
     } catch (error) {
       console.error("Error initializing learning paths:", error);
+    }
+  };
+
+  const initializeWelcomeCredits = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch("/api/credits/initialize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.id}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          credits: 50,
+          description: "Welcome bonus for completing profile setup",
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to initialize welcome credits");
+      } else {
+        console.log("Welcome credits initialized successfully");
+      }
+    } catch (error) {
+      console.error("Error initializing welcome credits:", error);
     }
   };
 
@@ -384,6 +415,17 @@ export default function ProfileSetupPage() {
           <p className="text-slate-600">
             Help us personalize your interview experience
           </p>
+          <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center space-x-2">
+              <Coins className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">
+                🎉 Complete your profile and get 50 welcome credits!
+              </span>
+            </div>
+            <p className="text-xs text-green-700 mt-1">
+              Start practicing interviews immediately after profile completion.
+            </p>
+          </div>
         </div>
 
         {/* Progress Steps */}
@@ -919,6 +961,20 @@ export default function ProfileSetupPage() {
                       </select>
                     </div>
                   </div>
+                </div>
+
+                <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Coins className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-semibold text-green-800">
+                      🎉 Almost there! Complete your profile to get 50 welcome
+                      credits
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-700">
+                    You'll be able to start practicing interviews immediately
+                    after profile completion.
+                  </p>
                 </div>
 
                 <div className="flex justify-between pt-6">

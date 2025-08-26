@@ -227,12 +227,17 @@ export default function RealtimeInterviewPage() {
             customRequirements: "",
           };
 
+      // Check if user ID is available
+      if (!user?.id) {
+        throw new Error("User not authenticated");
+      }
+
       // Create realtime session
       const response = await fetch("/api/interview/realtime-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.id}`,
+          Authorization: `Bearer ${user.id}`,
         },
         body: JSON.stringify(interviewConfig),
       });
@@ -315,7 +320,7 @@ export default function RealtimeInterviewPage() {
           // toast.error(`Connection error: ${error}`);
           setInterviewState((prev) => ({
             ...prev,
-            connectionState: "failed",
+            connectionState: "",
           }));
         },
         onConnectionStateChange: (state) => {

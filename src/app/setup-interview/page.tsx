@@ -120,6 +120,8 @@ export default function SetupInterviewPage() {
   });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [requiredCredits, setRequiredCredits] = useState<number | null>(null);
+  const [availableCredits, setAvailableCredits] = useState<number>(0);
+  const [creditsLoading, setCreditsLoading] = useState(true);
 
   // Interview configuration state
   const [interviewConfig, setInterviewConfig] = useState({
@@ -136,6 +138,40 @@ export default function SetupInterviewPage() {
       router.push("/login?redirectTo=/setup-interview");
     }
   }, [user, loading, router]);
+
+  // Fetch user credits
+  useEffect(() => {
+    if (user) {
+      fetchUserCredits();
+    }
+  }, [user]);
+
+  const fetchUserCredits = async () => {
+    try {
+      setCreditsLoading(true);
+      const response = await fetch("/api/credits/balance", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.id}`,
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCredits(data.available_credits);
+      } else {
+        console.error("Failed to fetch credits");
+        setAvailableCredits(0);
+      }
+    } catch (error) {
+      console.error("Error fetching credits:", error);
+      setAvailableCredits(0);
+    } finally {
+      setCreditsLoading(false);
+    }
+  };
 
   const handleConfigChange = (field: string, value: string) => {
     setInterviewConfig((prev) => ({
@@ -170,11 +206,25 @@ export default function SetupInterviewPage() {
     }
   };
 
+  const canStartInterview = () => {
+    // Check if user has enough credits for the interview
+    if (requiredCredits && availableCredits < requiredCredits) {
+      return false;
+    }
+    return canProceedToNext();
+  };
+
   // Only realtime interview is supported now
 
   const handleStartRealtimeInterview = () => {
     // Store interview configuration in sessionStorage for the realtime interview
-    sessionStorage.setItem("interviewConfig", JSON.stringify(interviewConfig));
+    sessionStorage.setItem(
+      "interviewConfig",
+      JSON.stringify({
+        ...interviewConfig,
+        duration: parseInt(interviewConfig.duration),
+      })
+    );
     router.push("/interview/realtime");
   };
 
@@ -641,14 +691,48 @@ export default function SetupInterviewPage() {
                               This interview will cost{" "}
                               <strong>{requiredCredits} credits</strong>
                             </p>
+                            <p className="text-xs text-blue-600 mt-1">
+                              You have{" "}
+                              <strong>{availableCredits} credits</strong>{" "}
+                              available
+                            </p>
                           </div>
                         )}
+
+                        {requiredCredits &&
+                          availableCredits < requiredCredits && (
+                            <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                              <p className="text-sm text-red-800">
+                                ❌ Insufficient credits. You need{" "}
+                                <strong>
+                                  {requiredCredits - availableCredits} more
+                                  credits
+                                </strong>{" "}
+                                to start this interview.
+                              </p>
+                              <Button
+                                onClick={() => setShowPurchaseModal(true)}
+                                className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Buy Credits to Continue
+                              </Button>
+                            </div>
+                          )}
+
                         <Button
                           onClick={handleStartRealtimeInterview}
-                          disabled={!canProceedToNext()}
-                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                          disabled={!canStartInterview()}
+                          className={`w-full ${
+                            canStartInterview()
+                              ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                              : "bg-gray-400 cursor-not-allowed"
+                          }`}
                         >
-                          Start Real-time Interview
+                          {!canStartInterview() &&
+                          requiredCredits &&
+                          availableCredits < requiredCredits
+                            ? "Insufficient Credits"
+                            : "Start Real-time Interview"}
                         </Button>
                       </div>
                     </CardContent>

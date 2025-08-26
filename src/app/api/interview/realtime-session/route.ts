@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { role, level, type, customRequirements } = body;
+    const { role, level, type, customRequirements, duration = 30 } = body;
 
     // Check if API key is available
     if (!process.env.OPENAI_API_KEY) {
@@ -38,12 +38,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate required credits based on interview duration
+    const requiredCredits = Math.max(5, Math.min(50, Math.ceil(parseInt(duration) / 3)));
+    
+    // Check if user has enough credits
+    const hasEnoughCredits = await CreditsService.checkUserCredits(userId, requiredCredits);
+    if (!hasEnoughCredits) {
+      return NextResponse.json(
+        { error: `Insufficient credits. You need ${requiredCredits} credits to start this interview. Please purchase more credits.` },
+        { status: 402 }
+      );
+    }
+
     // Deduct credits before creating OpenAI Realtime session
-    const creditsDeducted = await CreditsService.deductOpenAICredits(userId, 'realtime-session', 100); // Estimate tokens for session creation
+    const creditsDeducted = await CreditsService.deductOpenAICredits(userId, 'realtime-session', 0); // Will deduct based on actual usage
     if (!creditsDeducted) {
       return NextResponse.json(
-        { error: 'Insufficient credits to start interview. Please purchase more credits.' },
-        { status: 402 }
+        { error: 'Failed to deduct credits. Please try again.' },
+        { status: 500 }
       );
     }
 

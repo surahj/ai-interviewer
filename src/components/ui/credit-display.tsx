@@ -44,7 +44,7 @@ export function CreditDisplay({
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user.id}`,
+          Authorization: `Bearer ${user?.id}`,
         },
         credentials: "include",
       });

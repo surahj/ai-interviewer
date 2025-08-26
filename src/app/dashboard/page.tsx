@@ -114,6 +114,8 @@ function DashboardContent({
   });
   const [loadingData, setLoadingData] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number>(0);
+  const [creditsLoading, setCreditsLoading] = useState(true);
 
   useEffect(() => {
     // Let middleware handle authentication redirects
@@ -192,8 +194,36 @@ function DashboardContent({
   useEffect(() => {
     if (user?.id) {
       fetchDashboardData();
+      fetchUserCredits();
     }
   }, [user?.id, fetchDashboardData]);
+
+  const fetchUserCredits = async () => {
+    try {
+      setCreditsLoading(true);
+      const response = await fetch("/api/credits/balance", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.id}`,
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCredits(data.available_credits);
+      } else {
+        console.error("Failed to fetch credits");
+        setAvailableCredits(0);
+      }
+    } catch (error) {
+      console.error("Error fetching credits:", error);
+      setAvailableCredits(0);
+    } finally {
+      setCreditsLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -307,6 +337,18 @@ function DashboardContent({
                       This helps us tailor questions and recommendations to your
                       specific needs.
                     </p>
+                    <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center space-x-2">
+                        <Coins className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                          🎉 Complete your profile and get 50 welcome credits!
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-700 mt-1">
+                        Start practicing interviews immediately after profile
+                        completion.
+                      </p>
+                    </div>
                     <div className="flex items-center space-x-4">
                       <Link href="/profile/setup">
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -340,12 +382,35 @@ function DashboardContent({
                   <p className="text-sm text-slate-600">Speech-to-speech AI</p>
                 </div>
               </div>
-              <Link href="/setup-interview">
-                <Button className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white">
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Conversation
-                </Button>
-              </Link>
+              {availableCredits > 0 ? (
+                <Link href="/setup-interview">
+                  <Button className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white">
+                    <Play className="w-4 h-4 mr-2" />
+                    Start Conversation
+                  </Button>
+                </Link>
+              ) : (
+                <div className="w-full mt-4">
+                  <Button
+                    disabled
+                    className="w-full bg-gray-400 cursor-not-allowed text-white"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {creditsLoading ? "Loading..." : "No Credits Available"}
+                  </Button>
+                  <div className="mt-2 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-sm text-red-800">
+                      ❌ You need credits to start a conversation.
+                    </p>
+                    <Button
+                      onClick={() => setShowPurchaseModal(true)}
+                      className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-sm"
+                    >
+                      Buy Credits to Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -663,8 +728,8 @@ function DashboardContent({
         isOpen={showPurchaseModal}
         onClose={() => setShowPurchaseModal(false)}
         onPurchaseSuccess={() => {
-          // Refresh the page to update credit display
-          window.location.reload();
+          // Refresh credits after purchase
+          fetchUserCredits();
         }}
       />
     </div>
