@@ -76,13 +76,13 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/test-auth',
-        destination: '/dashboard',
+        source: "/test-auth",
+        destination: "/dashboard",
         permanent: false,
       },
       {
-        source: '/test-equipment',
-        destination: '/setup-interview',
+        source: "/test-equipment",
+        destination: "/setup-interview",
         permanent: false,
       },
     ];

@@ -215,7 +215,9 @@ export default function TestAuthPage() {
             <div>
               <strong>Supabase Anon Key:</strong>
               <div className="font-mono text-gray-600">
-                {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ Set" : "❌ Not set"}
+                {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+                  ? "✅ Set"
+                  : "❌ Not set"}
               </div>
             </div>
           </div>
