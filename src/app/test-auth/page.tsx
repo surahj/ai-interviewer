@@ -208,16 +208,14 @@ export default function TestAuthPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <strong>Supabase URL:</strong>
-              <div className="font-mono text-gray-600 break-all">
-                {process.env.NEXT_PUBLIC_SUPABASE_URL || "Not set"}
+              <div className="font-mono text-gray-600">
+                {process.env.NEXT_PUBLIC_SUPABASE_URL ? "✅ Set" : "❌ Not set"}
               </div>
             </div>
             <div>
               <strong>Supabase Anon Key:</strong>
-              <div className="font-mono text-gray-600 break-all">
-                {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                  ? `${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 20)}...`
-                  : "Not set"}
+              <div className="font-mono text-gray-600">
+                {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ Set" : "❌ Not set"}
               </div>
             </div>
           </div>

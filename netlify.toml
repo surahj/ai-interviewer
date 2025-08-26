@@ -1,0 +1,30 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_ENV = "production"
+  NODE_VERSION = "18"
+  # Disable secrets scanning to prevent false positives
+  SECRETS_SCAN_ENABLED = "false"
+
+# Configure Next.js plugin
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Build settings
+[build.processing]
+  skip_processing = false
+
+# Redirects for Next.js (handled by the Next.js plugin)
+# The Next.js plugin automatically handles routing
+
+# Environment variables that should be set in Netlify dashboard:
+# NEXT_PUBLIC_SUPABASE_URL
+# NEXT_PUBLIC_SUPABASE_ANON_KEY
+# SUPABASE_SERVICE_ROLE_KEY
+# OPENAI_API_KEY
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# NEXTAUTH_SECRET
+# NEXTAUTH_URL

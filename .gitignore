@@ -148,3 +148,4 @@ secrets/
 
 playwright-report/
 test-equipment/
+test-auth/
