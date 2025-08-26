@@ -70,7 +70,7 @@ export default function CreditsPage() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user.id}`,
+          Authorization: `Bearer ${user?.id}`,
         },
         credentials: "include",
       });
@@ -84,7 +84,7 @@ export default function CreditsPage() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user.id}`,
+          Authorization: `Bearer ${user?.id}`,
         },
         credentials: "include",
       });

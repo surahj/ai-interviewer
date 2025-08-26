@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
+// Use Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client with service role key
@@ -113,7 +119,7 @@ export async function GET(request: NextRequest) {
     // Calculate practice streak (consecutive days with interviews)
     let streak = 0;
     const interviewDates = completedInterviews.map(i => new Date(i.created_at).toDateString());
-    const uniqueDates = [...new Set(interviewDates)].sort().reverse();
+    const uniqueDates = Array.from(new Set(interviewDates)).sort().reverse();
     
     for (let i = 0; i < uniqueDates.length; i++) {
       const currentDate = new Date(uniqueDates[i]);
@@ -128,7 +134,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate skill breakdown
-    const skillBreakdown = {
+    const skillBreakdown: Record<string, { score: number; trend: string; questions: number }> = {
       technical: { score: 0, trend: '+0%', questions: 0 },
       communication: { score: 0, trend: '+0%', questions: 0 },
       confidence: { score: 0, trend: '+0%', questions: 0 },
@@ -138,8 +144,8 @@ export async function GET(request: NextRequest) {
     completedInterviews.forEach(interview => {
       if (interview.feedback?.skillBreakdown) {
         Object.keys(skillBreakdown).forEach(skill => {
-          if (interview.feedback.skillBreakdown[skill]) {
-            skillBreakdown[skill].score += interview.feedback.skillBreakdown[skill].score;
+          if (interview.feedback.skillBreakdown[skill as keyof typeof interview.feedback.skillBreakdown]) {
+            skillBreakdown[skill].score += interview.feedback.skillBreakdown[skill as keyof typeof interview.feedback.skillBreakdown].score;
             skillBreakdown[skill].questions += 1;
           }
         });

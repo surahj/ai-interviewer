@@ -1,9 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
-export default function CreditsSuccessPage() {
+function CreditsSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [loading, setLoading] = useState(true);
@@ -93,5 +93,29 @@ export default function CreditsSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CreditsSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+            <div className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center animate-spin">
+                <span className="text-white text-2xl">⟳</span>
+              </div>
+              <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+              <p className="text-gray-600 mb-4">
+                Please wait while we load the page.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CreditsSuccessContent />
+    </Suspense>
   );
 }

@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic';
 
+// Use Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs';
+
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

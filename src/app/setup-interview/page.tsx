@@ -40,6 +40,14 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  testMicrophone as testMicrophoneUtil,
+  testCamera as testCameraUtil,
+  requestMediaPermissions,
+  getPermissionInstructions,
+  isSecureContext,
+} from "@/lib/media-utils";
 
 // Interview configuration options
 const jobRoles = [
@@ -230,30 +238,116 @@ export default function SetupInterviewPage() {
 
   const testMicrophone = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setEquipmentStatus((prev) => ({ ...prev, microphone: true }));
-      stream.getTracks().forEach((track) => track.stop());
+      const result = await testMicrophoneUtil();
+      if (result.success) {
+        setEquipmentStatus((prev) => ({ ...prev, microphone: true }));
+        toast.success("Microphone test successful!");
+      } else {
+        setEquipmentStatus((prev) => ({ ...prev, microphone: false }));
+        toast.error(`Microphone test failed: ${result.error}`);
+      }
     } catch (error) {
+      console.error("Microphone test failed:", error);
       setEquipmentStatus((prev) => ({ ...prev, microphone: false }));
+      toast.error(
+        "Microphone test failed. Please check your microphone connection."
+      );
     }
   };
 
   const testCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setEquipmentStatus((prev) => ({ ...prev, camera: true }));
-      stream.getTracks().forEach((track) => track.stop());
+      const result = await testCameraUtil();
+      if (result.success) {
+        setEquipmentStatus((prev) => ({ ...prev, camera: true }));
+        toast.success("Camera test successful!");
+      } else {
+        setEquipmentStatus((prev) => ({ ...prev, camera: false }));
+        toast.error(`Camera test failed: ${result.error}`);
+      }
     } catch (error) {
+      console.error("Camera test failed:", error);
       setEquipmentStatus((prev) => ({ ...prev, camera: false }));
+      toast.error("Camera test failed. Please check your camera connection.");
     }
   };
 
   const testInternet = async () => {
     try {
-      const response = await fetch("/api/ping", { method: "GET" });
-      setEquipmentStatus((prev) => ({ ...prev, internet: response.ok }));
+      // Test basic connectivity
+      const response = await fetch("/api/ping", {
+        method: "GET",
+        cache: "no-cache", // Prevent caching
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.status !== "ok") {
+        throw new Error("Server response indicates connection issue");
+      }
+
+      setEquipmentStatus((prev) => ({ ...prev, internet: true }));
+      toast.success("Internet connection test successful!");
     } catch (error) {
+      console.error("Internet test failed:", error);
       setEquipmentStatus((prev) => ({ ...prev, internet: false }));
+
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        toast.error(
+          "No internet connection. Please check your network connection."
+        );
+      } else {
+        toast.error(
+          "Internet connection test failed. Please check your network connection."
+        );
+      }
+    }
+  };
+
+  // Auto-test equipment when reaching step 3
+  useEffect(() => {
+    if (currentStep === 3) {
+      // Auto-test all equipment
+      testMicrophone();
+      testCamera();
+      testInternet();
+    }
+  }, [currentStep]);
+
+  // Helper function to request permissions
+  const requestPermissions = async () => {
+    try {
+      toast.loading("Requesting permissions...");
+
+      const result = await requestMediaPermissions();
+
+      // Update status based on what we got
+      setEquipmentStatus((prev) => ({
+        ...prev,
+        microphone: result.microphone,
+        camera: result.camera,
+      }));
+
+      toast.dismiss();
+
+      if (result.error) {
+        toast.error(`Permission request failed: ${result.error}`);
+
+        // Show browser-specific instructions
+        const instructions = getPermissionInstructions();
+        toast.error(instructions, { duration: 8000 });
+      } else {
+        toast.success("Permissions granted! Equipment tested successfully.");
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("Permission request failed:", error);
+      toast.error(
+        "Failed to request permissions. Please check your browser settings."
+      );
     }
   };
 
@@ -554,6 +648,37 @@ export default function SetupInterviewPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Permission Request Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-900">
+                    Browser Permissions
+                  </span>
+                </div>
+                <p className="text-sm text-blue-700 mb-3">
+                  This application needs access to your microphone and camera
+                  for the interview. Click the button below to grant
+                  permissions.
+                </p>
+                {!isSecureContext() && (
+                  <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> Media devices require a secure
+                      connection (HTTPS). If you're testing locally, this should
+                      work fine.
+                    </p>
+                  </div>
+                )}
+                <Button
+                  onClick={requestPermissions}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  size="sm"
+                >
+                  Grant Permissions
+                </Button>
+              </div>
+
               <div className="space-y-4">
                 <div className="grid md:grid-cols-3 gap-4">
                   {/* Microphone Test */}
@@ -658,6 +783,42 @@ export default function SetupInterviewPage() {
                       <li>• Prepare your workspace and materials</li>
                     </ul>
                   </div>
+                </div>
+              </div>
+
+              {/* Troubleshooting Tips */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-900">
+                    Troubleshooting
+                  </span>
+                </div>
+                <div className="text-sm text-yellow-800 space-y-2">
+                  <p>
+                    <strong>If microphone/camera shows "Not detected":</strong>
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li>
+                      Make sure your browser supports media devices (Chrome,
+                      Firefox, Safari, Edge)
+                    </li>
+                    <li>
+                      Check that your microphone and camera are properly
+                      connected
+                    </li>
+                    <li>
+                      Ensure no other applications are using your microphone or
+                      camera
+                    </li>
+                    <li>
+                      Try refreshing the page and granting permissions again
+                    </li>
+                    <li>
+                      Check your browser's site settings for microphone and
+                      camera permissions
+                    </li>
+                  </ul>
                 </div>
               </div>
 

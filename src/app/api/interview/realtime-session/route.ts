@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CreditsService } from '@/lib/credits-service';
+import { v4 as uuidv4 } from 'uuid';
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
+// Use Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs';
 
 // Initialize Supabase client with service role key
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -50,8 +57,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate a unique session ID
+    const sessionId = uuidv4();
+    
     // Deduct credits before creating OpenAI Realtime session
-    const creditsDeducted = await CreditsService.deductOpenAICredits(userId, 'realtime-session', 0); // Will deduct based on actual usage
+    const creditsDeducted = await CreditsService.deductOpenAICredits(userId, sessionId, 0); // Will deduct based on actual usage
     if (!creditsDeducted) {
       return NextResponse.json(
         { error: 'Failed to deduct credits. Please try again.' },
@@ -119,7 +129,8 @@ IMPORTANT:
     const data = await response.json();
 
     return NextResponse.json({
-      sessionId: data.id,
+      sessionId: sessionId, // Use our generated session ID
+      openaiSessionId: data.id, // OpenAI's session ID
       session: data,
       interviewConfig: { role, level, type, customRequirements }
     });

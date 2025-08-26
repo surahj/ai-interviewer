@@ -302,7 +302,7 @@ export class CreditsService {
           user_id: userId,
           transaction_type: 'usage',
           credits: -creditsToDeduct,
-          description: `OpenAI API call - ${tokensUsed} tokens used`,
+          description: `Credit deduction for interview`,
           interview_id: interviewId,
           metadata: {
             tokens_used: tokensUsed,

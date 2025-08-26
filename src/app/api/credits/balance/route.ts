@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CreditsService } from '@/lib/credits-service';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
+// Use Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs';
+
 // Initialize Supabase client with service role key
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

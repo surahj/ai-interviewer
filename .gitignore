@@ -145,3 +145,6 @@ temp/
 *.key
 *.pem
 secrets/
+
+playwright-report/
+test-equipment/

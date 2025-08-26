@@ -191,7 +191,7 @@ function groupByMonth(interviewHistory: any[]) {
 }
 
 function calculateSkillScores(interviews: any[]) {
-  const skillScores: { [skill: string]: number } = {};
+  const skillScores: { [skill: string]: number[] } = {};
   
   interviews.forEach(interview => {
     if (interview.feedback?.skillBreakdown) {
@@ -205,12 +205,13 @@ function calculateSkillScores(interviews: any[]) {
   });
 
   // Calculate average scores for each skill
+  const result: { [skill: string]: number } = {};
   Object.keys(skillScores).forEach(skill => {
     const scores = skillScores[skill];
-    skillScores[skill] = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    result[skill] = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length;
   });
 
-  return skillScores;
+  return result;
 }
 
 function generatePerformanceInsights(userProfile: any, userProgress: any[], interviewHistory: any[]) {

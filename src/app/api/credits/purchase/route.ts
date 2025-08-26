@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
+// Use Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs';
 import { StripeService } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
